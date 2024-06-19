@@ -5,7 +5,7 @@ import Search from './pages/Search';
 import Analysis from './pages/Analysis';
 import Home from './pages/Home';
 import Account from './pages/Account';
-
+import SavedList from './pages/SavedList'
 
 
 function App() {
@@ -18,7 +18,7 @@ function App() {
       <Route path="/search" element={<Search />} />
       <Route path="/analysis" element={<Analysis />} />
       <Route path="/account" element={<Account />} />
-
+      <Route path="/saved" element={<SavedList />} />
     </Routes>
 
   </BrowserRouter>

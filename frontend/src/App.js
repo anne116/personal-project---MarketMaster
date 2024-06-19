@@ -1,29 +1,27 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import Header from './components/Header';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import Search from './pages/Search';
+import Analysis from './pages/Analysis';
+import Home from './pages/Home';
+import Account from './pages/Account';
+
+
 
 function App() {
  return (
-  <div>
-  <h1>Welcome to My Personal Project!</h1>
-  <nav>
-    <ul>
-      <li>
-        <Link to="/search">Search</Link>
-      </li>
-      <li>
-        <Link to="/map">Map</Link>
-      </li>
-      <li>
-        <Link to="/analysis">Analysis</Link>
-      </li>
-      <li>
-        <Link to="/account">Account</Link>
-      </li>
-    </ul>
-  </nav>
+  <BrowserRouter>
+    
+    <Header />
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/search" element={<Search />} />
+      <Route path="/analysis" element={<Analysis />} />
+      <Route path="/account" element={<Account />} />
 
-  </div>
+    </Routes>
+
+  </BrowserRouter>
   );
-  }
-
+}
 export default App;

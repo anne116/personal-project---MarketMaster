@@ -72,6 +72,9 @@ class SignUpRequest(BaseModel):
     email: str
     password: str
 
+class SaveProductRequest(BaseModel):
+    product_id: int
+
 @app.post("/signup")
 async def signUp(signup_request: SignUpRequest):
     user_id = str(uuid.uuid4())
@@ -106,6 +109,98 @@ async def signIn(form_data: OAuth2PasswordRequestForm = Depends()):
         cursor.close()
         conn.close()
 
+    
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code = 401,
+        detail = "Could not validate credentials",
+        headers = {"WWW-Authenticate": "Bearer"},
+    )
+    try: 
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    return user_id
+
+@app.get("/profile")
+async def get_profile(user_id: str = Depends(get_current_user)):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("SELECT name, email FROM users WHERE user_id = %s", (user_id, ))
+        user = cursor.fetchone()
+        print("CHECK USER: {user}")
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return user
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.post("/save_to_savedLists")
+async def save_to_savedLists(save_request: SaveProductRequest, user_id: str = Depends(get_current_user)):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("SELECT * FROM savedLists WHERE user_id = %s AND product_id = %s", (user_id, save_request.product_id))
+        existing_entry = cursor.fetchone()
+
+        if existing_entry:
+            raise HTTPException(status_code=400, detail="Product already saved")
+
+        cursor.execute("INSERT INTO savedLists (user_id, product_id) VALUES (%s, %s)", (user_id, save_request.product_id))
+        conn.commit()
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=400, detail=str(err))
+    finally:
+        cursor.close()    
+        conn.close()
+
+    return {"message": "Product saved successfully!"}
+
+@app.delete("/unsave_product/{product_id}")
+async def unsave_product(product_id: int, user_id: str = Depends(get_current_user)):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM savedLists WHERE user_id = %s AND product_id = %s", (user_id, product_id))
+        conn.commit()
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=400, detail=str(err))
+    finally:
+        cursor.close()
+        conn.close()
+    return { "message": "Product unsaved successfully!"}
+
+@app.get("/get_savedLists")
+async def get_savedLists(user_id: str = Depends(get_current_user)):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT p.id, p.mainImage_url, p.title, CONCAT(REPLACE(p.price_whole, '\n', ''), '.', LPAD(p.price_fraction, 2, '0')) AS price, p.rating, p.reviews
+            FROM savedLists s
+            JOIN products p ON s.product_id = p.id
+            WHERE s.user_id = %s
+        """, ( user_id, ))
+        products = cursor.fetchall()
+    except mysql.connector.Error as err:
+        raise HTTPException(status_code=400, detail=str(err))
+    finally:
+        cursor.close()
+        conn.close()
+
+    if not products:
+        raise HTTPException(status_code=404, detail="No product found for current user")
+
+    print(f"CHECK PRODUCTS {products}")
+    return products
 
 
 @app.get("/fetch_products")
@@ -113,7 +208,7 @@ async def fetch_products(keyword: str):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT mainImage_url, title, CONCAT(REPLACE(price_whole, '\n', ''), '.', LPAD(price_fraction, 2, '0')) AS price, rating, reviews 
+        SELECT id, mainImage_url, title, CONCAT(REPLACE(price_whole, '\n', ''), '.', LPAD(price_fraction, 2, '0')) AS price, rating, reviews 
         FROM products
         WHERE keyword = %s
         """, (keyword,))
@@ -123,7 +218,7 @@ async def fetch_products(keyword: str):
         await fetch_product_info(keyword)
 
         cursor.execute("""
-            SELECT mainImage_url, title, CONCAT(REPLACE(price_whole, '\n', ''), '.', LPAD(price_fraction, 2, '0')) AS price, rating, reviews
+            SELECT id, mainImage_url, title, CONCAT(REPLACE(price_whole, '\n', ''), '.', LPAD(price_fraction, 2, '0')) AS price, rating, reviews
             FROM products
             WHERE keyword = %s
         """, (keyword,))
@@ -139,11 +234,12 @@ async def fetch_products(keyword: str):
     product_list = []
     for product in products:
         product_dict = {
-            "main_Image": product[0],
-            "product_title": product[1],
-            "price": product[2],
-            "rating": product[3],
-            "reviews": product[4]
+            "id": product[0],
+            "main_Image": product[1],
+            "product_title": product[2],
+            "price": product[3],
+            "rating": product[4],
+            "reviews": product[5]
         }
         product_list.append(product_dict)
     print('Fetched products from DB:', product_list)

@@ -25,7 +25,9 @@ const Analysis = () => {
 
   const fetchStatistics = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/fetch_statistics?keyword=${encodeURIComponent(keyword)}`);
+      const response = await fetch(
+        `http://localhost:8000/fetch_statistics?keyword=${encodeURIComponent(keyword)}`,
+      );
       if (!response.ok) throw new Error('Failed to fetch statistics');
       const data = await response.json();
       setStats(data);
@@ -35,41 +37,49 @@ const Analysis = () => {
   };
 
   return (
-    <Box p={5} bg={useColorModeValue('gray.50', 'gray.800')} minH="100vh">
-      <Box maxW="1200px" mx="auto">
-        <Heading as="h1" size="xl" mb={6} textAlign="center" color="brand.800">
-          Product Analysis for "{keyword}"
+    <Box p={5} bg={useColorModeValue('gray.50', 'gray.800')} minH='100vh'>
+      <Box maxW='1200px' mx='auto'>
+        <Heading as='h1' size='xl' mb={6} textAlign='center' color='brand.800'>
+          Product Analysis for {keyword}
         </Heading>
         {error && (
-          <Text color="red.500" mb={4}>
+          <Text color='red.500' mb={4}>
             {error}
           </Text>
         )}
         {stats ? (
-          <VStack spacing={4} align="stretch">
-            <Box p={4} bg="white" boxShadow="md" borderRadius="md">
-              <Heading as="h2" size="lg" mb={4} color="brand.500">
+          <VStack spacing={4} align='stretch'>
+            <Box p={4} bg='white' boxShadow='md' borderRadius='md'>
+              <Heading as='h2' size='lg' mb={4} color='brand.500'>
                 Statistics
               </Heading>
-              <Text fontSize="lg">Estimated Seller Count: {stats.seller_count}</Text>
-              <Text mt={3} fontSize="lg">
+              <Text fontSize='lg'>
+                Estimated Seller Count: {stats.seller_count}
+              </Text>
+              <Text mt={3} fontSize='lg'>
                 Price Range: ${stats.price_range[0]} - ${stats.price_range[1]}
               </Text>
-              <Text mt={3} fontSize="lg">Average Price: ${stats.average_price.toFixed(2)}</Text>
-              <Text mt={3} fontSize="lg">Average Rating: {stats.average_rating.toFixed(2)}</Text>
-              <Text mt={3} fontSize="lg">Average Review: {stats.average_reviews.toFixed(0)}</Text>
+              <Text mt={3} fontSize='lg'>
+                Average Price: ${stats.average_price.toFixed(2)}
+              </Text>
+              <Text mt={3} fontSize='lg'>
+                Average Rating: {stats.average_rating.toFixed(2)}
+              </Text>
+              <Text mt={3} fontSize='lg'>
+                Average Review: {stats.average_reviews.toFixed(0)}
+              </Text>
             </Box>
             <Divider />
-            <Box p={4} bg="white" boxShadow="md" borderRadius="md">
-              <Heading as="h2" size="lg" mb={4} color="brand.500">
+            <Box p={4} bg='white' boxShadow='md' borderRadius='md'>
+              <Heading as='h2' size='lg' mb={4} color='brand.500'>
                 Suggested Product Title
               </Heading>
               {/* Add more analysis or suggestions here */}
             </Box>
           </VStack>
         ) : (
-          <Box display="flex" justifyContent="center" mt={4}>
-            <Spinner size="xl" />
+          <Box display='flex' justifyContent='center' mt={4}>
+            <Spinner size='xl' />
             <Text ml={2}>Loading...</Text>
           </Box>
         )}

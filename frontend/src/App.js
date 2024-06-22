@@ -5,7 +5,8 @@ import Search from './pages/Search';
 import Analysis from './pages/Analysis';
 import Home from './pages/Home';
 import Account from './pages/Account';
-import SavedList from './pages/SavedList'
+import SavedList from './pages/SavedList';
+import Profile from './pages/Profile';
 
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
       <Route path="/search" element={<Search />} />
       <Route path="/analysis" element={<Analysis />} />
       <Route path="/account" element={<Account />} />
+      <Route path="/profile" element={<Profile />} />
       <Route path="/saved" element={<SavedList />} />
     </Routes>
 

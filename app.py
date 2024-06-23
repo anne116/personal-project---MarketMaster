@@ -253,7 +253,7 @@ async def fetch_products(keyword: str):
     cursor = conn.cursor()
     cursor.execute(
         """
-        SELECT id, mainImage_url, title, CONCAT(REPLACE(price_whole, '\n', ''), '.', LPAD(price_fraction, 2, '0')) AS price, rating, reviews 
+        SELECT id, mainImage_url, title, CONCAT(REPLACE(price_whole, '\n', ''), '.', LPAD(price_fraction, 2, '0')) AS price, rating, reviews, url
         FROM products
         WHERE keyword = %s
         """,
@@ -266,7 +266,7 @@ async def fetch_products(keyword: str):
 
         cursor.execute(
             """
-            SELECT id, mainImage_url, title, CONCAT(REPLACE(price_whole, '\n', ''), '.', LPAD(price_fraction, 2, '0')) AS price, rating, reviews
+            SELECT id, mainImage_url, title, CONCAT(REPLACE(price_whole, '\n', ''), '.', LPAD(price_fraction, 2, '0')) AS price, rating, reviews, url
             FROM products
             WHERE keyword = %s
         """,
@@ -291,6 +291,7 @@ async def fetch_products(keyword: str):
             "price": product[3],
             "rating": product[4],
             "reviews": product[5],
+            "url": product[6],
         }
         product_list.append(product_dict)
     print("Fetched products from DB:", product_list)

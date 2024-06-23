@@ -191,7 +191,7 @@ const Search = () => {
                     <Flex direction='column' h='100%'>
                       <Flex direction='row' justify='space-between' mb={4}>
                         <Image
-                          objectFit='cover'
+                          objectFit='contain'
                           boxSize='130px'
                           src={product.main_Image}
                           alt={product.product_title}
@@ -222,6 +222,16 @@ const Search = () => {
                         <Text mt={0} color='brand.500'>
                           Reviews: {product.reviews}
                         </Text>
+                        <Button
+                          as='a'
+                          href={product.url}
+                          target='_blank'
+                          rel='noopener noreferrer'
+                          colorScheme='brand.500'
+                          mt={3}
+                        >
+                          View Product
+                        </Button>
                       </Box>
                     </Flex>
                   </Card>

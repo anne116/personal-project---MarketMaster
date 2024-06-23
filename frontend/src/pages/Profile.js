@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Heading, Text, Spinner, useToast } from '@chakra-ui/react';
+import { Box, Heading, Text, Spinner, useToast, Button } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 
 const Profile = () => {
@@ -48,6 +48,11 @@ const Profile = () => {
     );
   }
 
+  const handleSignOut = async() => {
+    localStorage.removeItem('token');
+    navigate('/account');
+  }
+
   if (error) {
     return (
       <Box display='flex' justifyContent='center' mt={4}>
@@ -72,6 +77,14 @@ const Profile = () => {
             </Text>
           </Box>
         )}
+        <Box display='flex' justifyContent='center' mt={10}>
+          <Button
+            colorScheme='brand.300'
+            onClick={handleSignOut}
+          >
+            Sign Out
+          </Button>
+        </Box>
       </Box>
     </Box>
   );

@@ -64,6 +64,8 @@ const Account = () => {
       if (!response.ok) throw new Error('Failed to create account');
       const data = await response.json();
       setMessage(data.message);
+      localStorage.setItem('token', data.access_token);
+      navigate('/profile');
     } catch (err) {
       setError(err.message);
     }
@@ -119,7 +121,7 @@ const Account = () => {
         <Button
           onClick={() => setActiveTab('signup')}
           colorScheme='teal'
-          color={activeTab === 'signup' ? 'brand.900' : 'teal.200'}
+          color={activeTab === 'signup' ? 'white' : 'brand.300'}
           variant={activeTab === 'signup' ? 'solid' : 'outline'}
         >
           Sign Up
@@ -127,7 +129,7 @@ const Account = () => {
         <Button
           onClick={() => setActiveTab('signin')}
           colorScheme='teal'
-          color={activeTab === 'signin' ? 'brand.900' : 'brand.200'}
+          color={activeTab === 'signin' ? 'white' : 'brand.300'}
           variant={activeTab === 'signin' ? 'solid' : 'outline'}
         >
           Sign In
@@ -163,7 +165,8 @@ const Account = () => {
               />
             </FormControl>
             <Button
-              colorScheme='teal'
+              colorScheme='brand'
+              color='white'
               width='full'
               onClick={signup}
               isDisabled={!isSignupFormValid()}
@@ -200,6 +203,7 @@ const Account = () => {
             >
               Sign In
             </Button>
+
           </>
         )}
 

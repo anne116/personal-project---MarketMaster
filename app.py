@@ -106,12 +106,16 @@ async def signup(signup_request: SignUpRequest):
             query, (user_id, signup_request.name, signup_request.email, hashed_password)
         )
         conn.commit()
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user_id}, expires_delta=access_token_expires
+        )
     except mysql.connector.Error as err:
         raise HTTPException(status_code=400, detail=str(err)) from err
     finally:
         cursor.close()
         conn.close()
-    return {"message": "User created successfully!"}
+    return {"message": "User created successfully!", "access_token": access_token}
 
 
 @app.post("/signin")
@@ -162,7 +166,7 @@ async def get_profile(user_id: str = Depends(get_current_user)):
     try:
         cursor.execute("SELECT name, email FROM users WHERE user_id = %s", (user_id,))
         user = cursor.fetchone()
-        print("CHECK USER: {user}")
+
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         return user

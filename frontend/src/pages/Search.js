@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -30,9 +30,62 @@ const Search = () => {
 
   const { saveProduct } = useSavedList();
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
 
+  const fetchProducts = async (keyword) => {
+    try {
+      setFetching(true);
+      const response = await fetch(
+        `http://localhost:8000/fetch_products?keyword=${encodeURIComponent(keyword)}`,
+      );
+      const data = await response.json();
+      setProducts(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  const handleSearch = useCallback(async (searchKeyword, updateUrl = true) => {
+    setError(null);
+    setTranslatedText(null);
+    setProducts([]);
+    setFetching(true);
+
+    try {
+      const translateResponse = await fetch(
+        `http://localhost:8000/translate?text=${encodeURIComponent(searchKeyword)}&dest=${displayLanguage}`,
+      );
+      if (!translateResponse.ok) throw new Error('Failed to fetch translation');
+      const translateData = await translateResponse.json();
+      const englishKeyword = translateData.translated_text;
+      setTranslatedText(englishKeyword);
+
+      await fetchProducts(englishKeyword);
+      const response = await fetch(
+        `http://localhost:8000/fetch_products?keyword=${encodeURIComponent(englishKeyword)}`,
+      );
+      const data = await response.json();
+      setProducts(data);
+      if (updateUrl) {
+        navigate(`?keyword=${encodeURIComponent(searchKeyword)}`);
+      }
+    } catch (err) {
+      setError(err.message);
+      setFetching(false);
+    }
+  }, [displayLanguage, navigate]);
+
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const queryKeyword = params.get('keyword');
+    if (queryKeyword) {
+      setKeyword(queryKeyword);
+      handleSearch(queryKeyword, false);
+    }
+
     const fetchSavedProducts = async() => {
       const token = localStorage.getItem('token');
       if (!token) return;
@@ -51,44 +104,10 @@ const Search = () => {
     };
 
     fetchSavedProducts();
-  }, []);
-  
+  }, [location.search, handleSearch]);
 
-  const fetchProducts = async (keyword) => {
-    try {
-      setFetching(true);
-      const response = await fetch(
-        `http://localhost:8000/fetch_products?keyword=${encodeURIComponent(keyword)}`,
-      );
-      const data = await response.json();
-      setProducts(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setFetching(false);
-    }
-  };
-
-  const handleSearch = async () => {
-    setError(null);
-    setTranslatedText(null);
-    setProducts([]);
-    setFetching(true);
-
-    try {
-      const translateResponse = await fetch(
-        `http://localhost:8000/translate?text=${encodeURIComponent(keyword)}&dest=${displayLanguage}`,
-      );
-      if (!translateResponse.ok) throw new Error('Failed to fetch translation');
-      const translateData = await translateResponse.json();
-      const englishKeyword = translateData.translated_text;
-      setTranslatedText(englishKeyword);
-
-      await fetchProducts(englishKeyword);
-    } catch (err) {
-      setError(err.message);
-      setFetching(false);
-    }
+  const handleSearchClick = () => {
+    handleSearch(keyword);
   };
 
   const handleAnalysisClick = () => {
@@ -181,7 +200,7 @@ const Search = () => {
           </Select>
 
           <Button
-            onClick={handleSearch}
+            onClick={handleSearchClick}
             colorScheme='blue'
             size='lg'
             width='full'

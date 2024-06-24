@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Box,
@@ -16,7 +16,7 @@ import {
   IconButton,
   useToast,
 } from '@chakra-ui/react';
-import { FaBookmark } from 'react-icons/fa';
+import { FaBookmark, FaRegBookmark } from 'react-icons/fa';
 import { useSavedList } from '../index';
 
 const Search = () => {
@@ -26,10 +26,33 @@ const Search = () => {
   const [displayLanguage, setDisplayLanguage] = useState('en');
   const [error, setError] = useState(null);
   const [fetching, setFetching] = useState(false);
+  const [savedProducts, setSavedProducts] = useState([]);
 
   const { saveProduct } = useSavedList();
   const navigate = useNavigate();
   const toast = useToast();
+
+  useEffect(() => {
+    const fetchSavedProducts = async() => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      try {
+        const response = await fetch('http://localhost:8000/get_savedLists', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await response.json();
+        setSavedProducts(data);
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+
+    fetchSavedProducts();
+  }, []);
+  
 
   const fetchProducts = async (keyword) => {
     try {
@@ -93,6 +116,7 @@ const Search = () => {
         position: 'top',
         status: 'success',
       });
+      setSavedProducts((prev) => [...prev, product]);
     } else if (checkTokenResult.message === 'Unauthorized') {
       toast({
         title: 'Your session has expired. Please log in again.',
@@ -110,6 +134,18 @@ const Search = () => {
       });
     }
   };
+
+  const isProductSaved = (productId) => {
+    return savedProducts.some((savedProduct) => savedProduct.id === productId);
+  };
+
+  const renderSaveIcon = (product) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return <FaRegBookmark />;
+    }
+    return isProductSaved(product.id) ? <FaBookmark /> : <FaRegBookmark />;
+;  }
 
   return (
     <Box p={5} bg='gray.50' minH='100vh'>
@@ -206,7 +242,7 @@ const Search = () => {
                         </Heading>
                         <IconButton
                           aria-label='Save'
-                          icon={<FaBookmark />}
+                          icon={renderSaveIcon(product)}
                           onClick={() => handleSaveProduct(product)}
                           colorScheme='teal'
                           variant='outline'

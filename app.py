@@ -17,7 +17,8 @@ from openai import AsyncOpenAI
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from pydantic import BaseModel
-from crawl_amazon_product_data import fetch_product_info
+from tasks import add_crawl_task
+import logging
 
 
 app = FastAPI()
@@ -249,6 +250,8 @@ async def get_saved_lists(user_id: str = Depends(get_current_user)):
     print(f"CHECK PRODUCTS {products}")
     return products
 
+logger = logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 @app.get("/fetch_products")
 async def fetch_products(keyword: str):
@@ -266,25 +269,14 @@ async def fetch_products(keyword: str):
     products = cursor.fetchall()
 
     if not products:
-        await fetch_product_info(keyword)
-
-        cursor.execute(
-            """
-            SELECT id, mainImage_url, title, CONCAT(REPLACE(price_whole, '\n', ''), '.', LPAD(price_fraction, 2, '0')) AS price, rating, reviews, url
-            FROM products
-            WHERE keyword = %s
-        """,
-            (keyword,),
+        add_crawl_task(keyword)
+        logger.info(f"No products found for keyword '{keyword}', crawl task added")
+        raise HTTPException(
+            status_code=202, detail='Keyword not found. A crawl task has been added to the queue'
         )
-        products = cursor.fetchall()
-
+    
     cursor.close()
     conn.close()
-
-    if not products:
-        raise HTTPException(
-            status_code=404, detail="No product found for current keyword"
-        )
 
     product_list = []
     for product in products:

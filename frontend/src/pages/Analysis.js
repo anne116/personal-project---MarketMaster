@@ -13,13 +13,14 @@ import {
 const Analysis = () => {
   const location = useLocation();
   const { keyword } = location.state || {};
-
+  const [suggestedTitle, setSuggestedTitle] = useState(null);
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (keyword) {
       fetchStatistics();
+      fetchSuggestedTitle();
     }
   }, [keyword]);
 
@@ -36,6 +37,16 @@ const Analysis = () => {
     }
   };
 
+    const fetchSuggestedTitle = async() => {
+      try {
+          const titleResponse = await fetch(`http://localhost:8000/suggested_title?keyword=${encodeURIComponent(keyword)}`)
+          if (!titleResponse.ok) throw new Error('Failed to fetch suggested title')
+          const suggested_title = await titleResponse.json();
+          setSuggestedTitle(suggested_title)
+      } catch(err) {
+          setError(err.message)
+      }
+  }
   return (
     <Box p={5} bg={useColorModeValue('gray.50', 'gray.800')} minH='100vh'>
       <Box maxW='1200px' mx='auto'>
@@ -74,7 +85,11 @@ const Analysis = () => {
               <Heading as='h2' size='lg' mb={4} color='brand.500'>
                 Suggested Product Title
               </Heading>
-              {/* Add more analysis or suggestions here */}
+        {suggestedTitle && ( 
+            <div>
+                  <p>{ suggestedTitle }</p>
+              </div>
+        )}
             </Box>
           </VStack>
         ) : (

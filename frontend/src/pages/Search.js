@@ -18,6 +18,7 @@ import {
 } from '@chakra-ui/react';
 import { FaBookmark, FaRegBookmark } from 'react-icons/fa';
 import { useSavedList } from '../index';
+import { debounce } from 'lodash';
 
 const Search = () => {
   const [keyword, setKeyword] = useState('');
@@ -64,26 +65,24 @@ const Search = () => {
       setTranslatedText(englishKeyword);
 
       await fetchProducts(englishKeyword);
-      const response = await fetch(
-        `http://localhost:8000/fetch_products?keyword=${encodeURIComponent(englishKeyword)}`,
-      );
-      const data = await response.json();
-      setProducts(data);
       if (updateUrl) {
         navigate(`?keyword=${encodeURIComponent(searchKeyword)}`);
       }
     } catch (err) {
       setError(err.message);
+    } finally {
       setFetching(false);
     }
   }, [displayLanguage, navigate]);
+
+  const debounceHandleSearch = useCallback(debounce(handleSearch, 300), [handleSearch]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const queryKeyword = params.get('keyword');
     if (queryKeyword) {
       setKeyword(queryKeyword);
-      handleSearch(queryKeyword, false);
+      debounceHandleSearch(queryKeyword, false);
     }
 
     const fetchSavedProducts = async() => {
@@ -104,10 +103,10 @@ const Search = () => {
     };
 
     fetchSavedProducts();
-  }, [location.search, handleSearch]);
+  }, [location.search, debounceHandleSearch]);
 
   const handleSearchClick = () => {
-    handleSearch(keyword);
+    debounceHandleSearch(keyword);
   };
 
   const handleAnalysisClick = () => {
@@ -155,7 +154,10 @@ const Search = () => {
   };
 
   const isProductSaved = (productId) => {
-    return savedProducts.some((savedProduct) => savedProduct.id === productId);
+    // console.log({savedProducts})
+    // return savedProducts.some((savedProduct) => savedProduct.id === productId);
+    return Array.isArray(savedProducts) && savedProducts.some((savedProduct) => savedProduct.id === productId);
+
   };
 
   const renderSaveIcon = (product) => {

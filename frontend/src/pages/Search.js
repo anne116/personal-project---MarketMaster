@@ -225,6 +225,18 @@ const Search = () => {
           </Button>
 
           {translatedText && (
+            <Button
+              onClick={handleAnalysisClick}
+              colorScheme='teal'
+              size='lg'
+              mt={4}
+              width='full'
+            >
+              More Analytic Insights
+            </Button>
+          )}
+
+          {translatedText && (
             <Box mt={4} textAlign='center'>
               <Heading as='h4' size='md' mb={2}>
                 Translated Text
@@ -234,7 +246,7 @@ const Search = () => {
               </Text>
             </Box>
           )}
-
+          
           <Button as={Link} to='/saved' colorScheme='blue' size='lg'>
             View Your Saved List
           </Button>
@@ -309,18 +321,6 @@ const Search = () => {
                 ))}
               </SimpleGrid>
             </Box>
-          )}
-
-          {translatedText && (
-            <Button
-              onClick={handleAnalysisClick}
-              colorScheme='teal'
-              size='lg'
-              mt={4}
-              width='full'
-            >
-              More Analytic Insights
-            </Button>
           )}
 
           {error && (

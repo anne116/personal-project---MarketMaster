@@ -69,10 +69,14 @@ async def extract_product_images(context, product_page_url):
 
 async def extract_product_details(item):
     """Extract product details from an item element"""
-    title_element = await item.query_selector("h2 a span")
-    title = (
-        await title_element.evaluate("el => el.innerText") if title_element else None
-    )
+    # title_element = await item.query_selector("h2 a span")
+    # title = (
+    #     await title_element.evaluate("el => el.innerText") if title_element else None
+    # )
+
+    span_elements = await item.query_selector_all("h2 a span")    
+    title_parts = [await span_element.evaluate("el => el.innerText") for span_element in span_elements]
+    title = " ".join(title_parts).strip() if title_parts else None
 
     link_element = await item.query_selector("h2 a")
     url = await link_element.get_attribute("href") if link_element else None

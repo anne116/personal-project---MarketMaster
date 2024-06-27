@@ -11,15 +11,15 @@ load_dotenv()
 
 aws_sqs_queue_url = os.getenv('AWS_SQS_QUEUE_URL')
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 sqs = boto3.client(
     'sqs',
     region_name = os.getenv('AWS_REGION'),
     aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID'),
     aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
 )
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 def add_crawl_task(keyword):
     """send message to SQS queue"""

@@ -54,7 +54,7 @@ const Search = () => {
     setTranslatedText(null);
     setProducts([]);
     setFetching(true);
-
+  
     try {
       const translateResponse = await fetch(
         `http://localhost:8000/translate?text=${encodeURIComponent(searchKeyword)}&dest=${displayLanguage}`,
@@ -63,7 +63,7 @@ const Search = () => {
       const translateData = await translateResponse.json();
       const englishKeyword = translateData.translated_text;
       setTranslatedText(englishKeyword);
-
+  
       await fetchProducts(englishKeyword);
       if (updateUrl) {
         navigate(`?keyword=${encodeURIComponent(searchKeyword)}`);
@@ -75,7 +75,12 @@ const Search = () => {
     }
   }, [displayLanguage, navigate]);
 
-  const debounceHandleSearch = useCallback(debounce(handleSearch, 300), [handleSearch]);
+  const debounceHandleSearch = useCallback(
+    debounce((searchKeyword, updateUrl = true) => {
+      handleSearch(searchKeyword, updateUrl);
+    }, 300),
+    [handleSearch]
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -87,18 +92,30 @@ const Search = () => {
 
     const fetchSavedProducts = async() => {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) {
+        return;
+      } else {
 
-      try {
-        const response = await fetch('http://localhost:8000/get_savedLists', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        const data = await response.json();
-        setSavedProducts(data);
-      } catch (err) {
-        setError(err.message);
+        try {
+          const response = await fetch('http://localhost:8000/get_savedLists', {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            console.log('Token expired or invalid');
+            return;
+          }
+          throw new Error(`Failed to fetch saved lists: ${response.statusText}`);
+        }
+
+          const data = await response.json();
+          setSavedProducts(data);
+        } catch (err) {
+          setError(err.message);
+        }
       }
     };
 
@@ -154,10 +171,7 @@ const Search = () => {
   };
 
   const isProductSaved = (productId) => {
-    // console.log({savedProducts})
-    // return savedProducts.some((savedProduct) => savedProduct.id === productId);
     return Array.isArray(savedProducts) && savedProducts.some((savedProduct) => savedProduct.id === productId);
-
   };
 
   const renderSaveIcon = (product) => {

@@ -1,5 +1,5 @@
 """
-This module contains functions to crawl Amazon product data and return data to worker.
+This module contains functions to crawl Amazon product data, batch store in database and return data to worker.
 """
 import asyncio
 import time

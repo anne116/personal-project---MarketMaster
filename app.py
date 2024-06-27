@@ -6,8 +6,8 @@ import os
 import uuid
 from typing import Optional
 from datetime import datetime, timedelta
-from fastapi import FastAPI, HTTPException, Query, Depends
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, Query, Depends, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import mysql.connector
@@ -45,6 +45,10 @@ app.add_middleware(
 
 translate_client = translate.Client()
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+active_connections = []
 
 def get_db_connection():
     """Establish and return connection to the database"""
@@ -250,9 +254,6 @@ async def get_saved_lists(user_id: str = Depends(get_current_user)):
     print(f"CHECK PRODUCTS {products}")
     return products
 
-logger = logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 @app.get("/fetch_products")
 async def fetch_products(keyword: str):
     """Fetch product information based on a keyword"""
@@ -371,8 +372,77 @@ async def get_suggested_title(keyword: str):
     except Exception as err:
         raise HTTPException(status_code=500, detail=str(err)) from err
 
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    active_connections.append(websocket)
+    try:
+        logger.info(f"New connection: {websocket.client}")
+        while True:
+            try:
+                data = await websocket.receive_text()
+                logger.info(f"Received messages: {data}")
+                await notify_users(data)
+            except WebSocketDisconnect:
+                break
+    except Exception as err:
+        logger.error(f"WebSocket connection error: {err}")
+    finally:
+        active_connections.remove(websocket)
+        logger.info("WebSocket connection closed.")
+
+async def notify_users(message: str):
+    logger.info(f"Sending message to {len(active_connections)} connections")
+    for connection in active_connections:
+        await connection.send_text(message)
+        logger.info(f"Sent message to {connection.client}: {message}")
+
+@app.get("/ws-test")
+async def get_ws_test():
+    return HTMLResponse("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>WebSocket Test</title>
+        </head>
+        <body>
+            <h1>WebSocket Test Start</h1>
+            <form onsubmit="sendMessage(event)">
+                <input id="messageText" type="text" value="Hello WebSocket!" />
+                <button type="submit">Send Message</button>
+            </form>
+            <ul id='messages'></ul>
+            <script>
+                console.log("Connecting to WebSocket...");
+                const ws = new WebSocket("ws://localhost:8000/ws");
+                ws.onopen = function(event) {
+                    console.log("WebSocket connection opened.");
+                };
+                ws.onmessage = function(event) {
+                    const messages = document.getElementById('messages');
+                    const message = document.createElement('li');
+                    const content = document.createTextNode(event.data);
+                    message.appendChild(content);
+                    messages.appendChild(message);
+                    console.log("Received message:", event.data);
+                };
+
+                function sendMessage(event) {
+                    event.preventDefault();
+                    const input = document.getElementById("messageText");
+                    if (ws.readyState === WebSocket.OPEN) {
+                        ws.send(input.value);
+                        console.log("CHECK INPUT:", input.value);
+                        input.value = '';
+                    } else {
+                        console.error("WebSocket is not open. readyState:", ws.readyState);
+                    }
+                }
+            </script>
+        </body>
+        </html>
+    """)
 
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -249,12 +249,7 @@ async def get_saved_lists(user_id: str = Depends(get_current_user)):
     finally:
         cursor.close()
         conn.close()
-
-    if not products:
-        raise HTTPException(status_code=404, detail="No product found for current user")
-
-    print(f"CHECK PRODUCTS {products}")
-    return products
+    return products if products else []
 
 @app.get("/fetch_products")
 async def fetch_products(keyword: str):

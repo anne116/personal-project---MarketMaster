@@ -12,29 +12,35 @@ const Header = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // console.log({ env: process.env })    
-    const webSocketUrl = process.env.REACT_APP_WEBSOCKET_URL;
-    const socket = new WebSocket(`${webSocketUrl}/ws`);
+    // console.log({ env: process.env })  
+    const connectWebSocket = () => {
+      const webSocketUrl = process.env.REACT_APP_WEBSOCKET_URL;
+      const socket = new WebSocket(`${webSocketUrl}/ws`);
 
-    socket.onopen = () => {
-      console.log('Connected to WebSocket');
-    };
-    socket.onmessage = (event) => {
-      console.log('Notification received:', event.data);
-      const data = JSON.parse(event.data);
-      console.log('Parsed data:', data)
-      setNotifications((prev) => [...prev, data]);
-      setNewNotifications((prev) => prev + 1);
-    };
-    socket.onclose = () => {
-      console.log('Websocket connection closed.');
-    };
-    socket.error = (error) => {
-      console.log('Websocket error:', error);
-    };
-
-    setWs(socket);
-
+      socket.onopen =() => {
+        console.log('WebSocket is connected');
+      };
+      socket.onmessage = (event) => {
+        console.log('Notification received:', event.data);
+        const data = JSON.parse(event.data);
+        console.log('Parsed data:', data)
+        setNotifications((prev) => [...prev, data]);
+        setNewNotifications((prev) => prev + 1);
+      };
+      socket.onclose = (event) => {
+        console.log('Websocket connection closed.', event);
+        setTimeout( () => {
+          console.log('Reconnecting WebSocket...');
+          connectWebSocket();
+        },5000);
+      };
+      socket.onerror = (error) => {
+        console.log('Websocket error:', error);
+      };
+      setWs(socket);
+      return socket;
+    }  
+    const socket = connectWebSocket();
     return () => {
       socket.close();
     }

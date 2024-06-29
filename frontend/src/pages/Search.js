@@ -103,18 +103,22 @@ const Search = () => {
             },
           });
 
-        if (!response.ok) {
-          if (response.status === 401) {
-            console.log('Token expired or invalid');
-            return;
-          }
-          throw new Error(`Failed to fetch saved lists: ${response.statusText}`);
+          if (!response.ok) {
+            if (response.status === 401) {
+              console.log('Token expired or invalid');
+              return;
+            }
+              throw new Error(`: ${response.status} ${response.statusText}`);
         }
 
           const data = await response.json();
           setSavedProducts(data);
         } catch (err) {
+          if (err.message === 'You Have Not Saved Anything Yet!') {
+            setError(err.message);
+          } else {
           setError(err.message);
+          }
         }
       }
     };

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Heading,
@@ -19,12 +20,18 @@ const SavedList = () => {
   const [error, setError] = useState(null);
   const { savedProducts, setSavedProducts, removeProduct } = useSavedList();
   const toast = useToast();
+  const navigate = useNavigate();
+  const isTokenChecked = useRef(false);
 
   const handleUnsaveProduct = async (product_id) => {
     try {
       await removeProduct(product_id);
       toast({
-        title: 'Product unsaved successfully!',
+        render: () => (
+          <Box color='brand.800' p={3} bg='#DFF2E1'>
+            <Text fontWeight='bold'>Product unsaved successfully!</Text>
+          </Box>
+        ),
         status: 'success',
         isClosable: true,
         position: 'top',
@@ -42,8 +49,20 @@ const SavedList = () => {
   useEffect(() => {
     const fetchSavedProducts = async () => {
       const token = localStorage.getItem('token');
+      if (!token && !isTokenChecked.current) {
+        isTokenChecked.current = true;
+        toast({
+          title: 'Please sign in or sign up to view your saved products.',
+          status: 'error',
+          duration: 5000,
+          position: 'top',
+          isClosable: true,
+        });
+        navigate('/account');
+        return;
+      }
       try {
-        const response = await fetch('http://localhost:8000/get_savedLists', {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/get_savedLists`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -58,7 +77,7 @@ const SavedList = () => {
       }
     };
     fetchSavedProducts();
-  }, [setSavedProducts]);
+  }, [setSavedProducts, toast, navigate]);
 
   if (loading) {
     return (

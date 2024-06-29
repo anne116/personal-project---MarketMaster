@@ -15,7 +15,7 @@ import logging
 load_dotenv()
 
 AWS_SQS_QUEUE_URL = os.getenv('AWS_SQS_QUEUE_URL')
-WEBSOCKET_URL = "ws://localhost:8000/ws"
+WEBSOCKET_URL = os.getenv('WEBSOCKET_URL')
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

@@ -35,6 +35,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"),)
 
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -414,7 +416,7 @@ async def get_ws_test():
             <ul id='messages'></ul>
             <script>
                 console.log("Connecting to WebSocket...");
-                const ws = new WebSocket("ws://localhost:8000/ws");
+                const ws = new WebSocket(`ws://${window.location.hostname}:8000/ws`);
                 ws.onopen = function(event) {
                     console.log("WebSocket connection opened.");
                 };

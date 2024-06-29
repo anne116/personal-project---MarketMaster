@@ -4,6 +4,7 @@ import { Badge, Box, Flex, IconButton, Image, Spacer, Menu, MenuButton, MenuList
 import { FaSearch, FaHome, FaBookmark, FaUser, FaBell } from 'react-icons/fa'; 
 import MarketMasterLogo from '../assets/MarketMasterLogo.png';
 
+
 const Header = () => {
   const [ notifications, setNotifications ] = useState([]);
   const [ newNotifications, setNewNotifications ] = useState(0);
@@ -11,7 +12,10 @@ const Header = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const socket = new WebSocket('ws://localhost:8000/ws');
+    // console.log({ env: process.env })    
+    const webSocketUrl = process.env.REACT_APP_WEBSOCKET_URL;
+    const socket = new WebSocket(`${webSocketUrl}/ws`);
+
     socket.onopen = () => {
       console.log('Connected to WebSocket');
     };
@@ -42,7 +46,6 @@ const Header = () => {
 
   const handleNotificationClick = (notification) => {
     setNotifications(notifications.filter(notif => notif !== notification));
-    console.log('CHECK NOTIFICATION.KEYWORD', notification.keyword);
     navigate(`/search?keyword=${notification.keyword}`);
   }
   

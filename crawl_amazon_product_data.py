@@ -17,7 +17,7 @@ load_dotenv()
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-os.environ['PWDEBUG'] = '1'
+# os.environ['PWDEBUG'] = '1'
 
 user_agents = [
     (

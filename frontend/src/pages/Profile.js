@@ -18,11 +18,11 @@ const Profile = () => {
           position: 'top',
           status: 'error',
         });
-        navigate('/signin');
+        navigate('/account');
         return;
       }
       try {
-        const response = await fetch('http://localhost:8000/profile', {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/profile`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -50,6 +50,18 @@ const Profile = () => {
 
   const handleSignOut = async() => {
     localStorage.removeItem('token');
+    toast({
+      title: 'Sign out successfully!',
+      position: 'top',
+      status: 'success',
+      duration: 5000,
+      isClosable: true,
+      render: () => (
+        <Box color='brand.800' p={3} bg='#DFF2E1'>
+          <Text fontWeight='bold'>Signed out successfully!</Text>
+        </Box>
+      )
+    })
     navigate('/account');
   }
 

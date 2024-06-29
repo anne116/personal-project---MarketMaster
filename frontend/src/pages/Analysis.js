@@ -27,7 +27,7 @@ const Analysis = () => {
   const fetchStatistics = async () => {
     try {
       const response = await fetch(
-        `http://localhost:8000/fetch_statistics?keyword=${encodeURIComponent(keyword)}`,
+        `${process.env.REACT_APP_API_URL}/fetch_statistics?keyword=${encodeURIComponent(keyword)}`,
       );
       if (!response.ok) throw new Error('Failed to fetch statistics');
       const data = await response.json();
@@ -39,7 +39,7 @@ const Analysis = () => {
 
     const fetchSuggestedTitle = async() => {
       try {
-          const titleResponse = await fetch(`http://localhost:8000/suggested_title?keyword=${encodeURIComponent(keyword)}`)
+          const titleResponse = await fetch(`${process.env.REACT_APP_API_URL}/suggested_title?keyword=${encodeURIComponent(keyword)}`)
           if (!titleResponse.ok) throw new Error('Failed to fetch suggested title')
           const suggested_title = await titleResponse.json();
           setSuggestedTitle(suggested_title)

@@ -38,7 +38,7 @@ const Search = () => {
     try {
       setFetching(true);
       const response = await fetch(
-        `http://localhost:8000/fetch_products?keyword=${encodeURIComponent(keyword)}`,
+        `${process.env.REACT_APP_API_URL}/fetch_products?keyword=${encodeURIComponent(keyword)}`,
       );
       const data = await response.json();
       setProducts(data);
@@ -57,7 +57,7 @@ const Search = () => {
   
     try {
       const translateResponse = await fetch(
-        `http://localhost:8000/translate?text=${encodeURIComponent(searchKeyword)}&dest=${displayLanguage}`,
+        `${process.env.REACT_APP_API_URL}/translate?text=${encodeURIComponent(searchKeyword)}&dest=${displayLanguage}`,
       );
       if (!translateResponse.ok) throw new Error('Failed to fetch translation');
       const translateData = await translateResponse.json();
@@ -97,7 +97,7 @@ const Search = () => {
       } else {
 
         try {
-          const response = await fetch('http://localhost:8000/get_savedLists', {
+          const response = await fetch(`${process.env.REACT_APP_API_URL}/get_savedLists`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },

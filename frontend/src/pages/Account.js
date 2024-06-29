@@ -8,6 +8,7 @@ import {
   VStack,
   Text,
   HStack,
+  useToast,
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 
@@ -24,13 +25,14 @@ const Account = () => {
   const [error, setError] = useState(null);
 
   const navigate = useNavigate();
+  const toast = useToast();
 
   useEffect(() => {
     const checkToken = async () => {
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          const response = await fetch('http://localhost:8000/profile', {
+          const response = await fetch(`${process.env.REACT_APP_API_URL}/profile`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -46,11 +48,17 @@ const Account = () => {
     checkToken();
   }, [navigate]);
 
+  useEffect(() => {
+    if (message) {
+      navigate('/profile');
+    }
+  }, [message, navigate]);
+
   const signup = async () => {
     setError(null);
     setMessage(null);
     try {
-      const response = await fetch('http://localhost:8000/signup', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,9 +71,21 @@ const Account = () => {
       });
       if (!response.ok) throw new Error('Failed to create account');
       const data = await response.json();
-      setMessage(data.message);
+      setMessage('Account created successfully');
       localStorage.setItem('token', data.access_token);
-      navigate('/profile');
+      toast({
+        title: 'Account created successfully!',
+        description: 'You have signed up.',
+        position: 'top',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+        render: () => (
+          <Box color='brand.800' p={3} bg='#DFF2E1'>
+            <Text fontWeight='bold'>Account signed up successfully!</Text>
+          </Box>
+        ),
+      });
     } catch (err) {
       setError(err.message);
     }
@@ -75,7 +95,7 @@ const Account = () => {
     setError(null);
     setMessage(null);
     try {
-      const response = await fetch('http://localhost:8000/signin', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/signin`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -87,9 +107,21 @@ const Account = () => {
       });
       if (!response.ok) throw new Error('Failed to sign in');
       const data = await response.json();
-      setMessage(data.message);
+      setMessage('Signed in successfully');
       localStorage.setItem('token', data.access_token);
-      navigate('/profile');
+      toast({
+        title: 'Signed in successfully!',
+        description: 'You have signed in.',
+        position: 'top',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+        render: () => (
+          <Box color='brand.800' p={3} bg='#DFF2E1'>
+            <Text fontWeight='bold'>Account signed in succesfully!</Text>
+          </Box>
+        )
+      });
     } catch (err) {
       setError(err.message);
     }

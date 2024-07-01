@@ -7,7 +7,7 @@ import uuid
 from typing import Optional
 from datetime import datetime, timedelta
 from fastapi import FastAPI, HTTPException, Query, Depends, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import mysql.connector
@@ -19,14 +19,13 @@ from jose import JWTError, jwt
 from pydantic import BaseModel
 from tasks import add_crawl_task
 import logging
-
+from fastapi.staticfiles import StaticFiles 
 
 app = FastAPI()
 
 load_dotenv()
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"google-translate-key.json"
-
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -39,7 +38,7 @@ FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["FRONTEND_URL"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -61,16 +60,13 @@ def get_db_connection():
         database=os.getenv("MYSQL_DATABASE"),
     )
 
-
 def verify_password(plain_password, hased_password):
     """Verify a plain password against a hashed password"""
     return pwd_context.verify(plain_password, hased_password)
 
-
 def get_password_hash(password):
     """Hash password for storing"""
     return pwd_context.hash(password)
-
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create a JWT access token"""
@@ -82,7 +78,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
-
 
 class SignUpRequest(BaseModel):
     """Model for user signup requests"""
@@ -97,6 +92,11 @@ class SaveProductRequest(BaseModel):
 
     product_id: int
 
+@app.get("/", response_class=HTMLResponse)
+async def serve_home():
+    return FileResponse("frontend/build/index.html")    
+
+app.mount("/static", StaticFiles(directory="frontend/build/static"), name="static")
 
 @app.post("/signup")
 async def signup(signup_request: SignUpRequest):
@@ -124,7 +124,6 @@ async def signup(signup_request: SignUpRequest):
         conn.close()
     return {"message": "User created successfully!", "access_token": access_token}
 
-
 @app.post("/signin")
 async def signin(form_data: OAuth2PasswordRequestForm = Depends()):
     """Endpoint to handle user signin"""
@@ -146,7 +145,6 @@ async def signin(form_data: OAuth2PasswordRequestForm = Depends()):
         cursor.close()
         conn.close()
 
-
 def get_current_user(token: str = Depends(oauth2_scheme)):
     """Get the current user based on the token"""
     credentials_exception = HTTPException(
@@ -162,7 +160,6 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     except JWTError as err:
         raise credentials_exception from err
     return user_id
-
 
 @app.get("/profile")
 async def get_profile(user_id: str = Depends(get_current_user)):
@@ -180,7 +177,6 @@ async def get_profile(user_id: str = Depends(get_current_user)):
     finally:
         cursor.close()
         conn.close()
-
 
 @app.post("/save_to_savedLists")
 async def save_to_saved_lists(
@@ -209,7 +205,6 @@ async def save_to_saved_lists(
 
     return {"message": "Product saved successfully!"}
 
-
 @app.delete("/unsave_product/{product_id}")
 async def unsave_product(product_id: int, user_id: str = Depends(get_current_user)):
     """Remove a product from user's saved product list"""
@@ -225,7 +220,6 @@ async def unsave_product(product_id: int, user_id: str = Depends(get_current_use
         cursor.close()
         conn.close()
     return {"message": "Product unsaved successfully!"}
-
 
 @app.get("/get_savedLists")
 async def get_saved_lists(user_id: str = Depends(get_current_user)):
@@ -291,7 +285,6 @@ async def fetch_products(keyword: str):
     print("Fetched products from DB:", product_list)
     return JSONResponse(content=product_list)
 
-
 @app.get("/translate")
 async def translate_text(
     text: str = Query(..., description="Text to translate"),
@@ -300,7 +293,6 @@ async def translate_text(
     """Translate text to a specific language"""
     result = translate_client.translate(text, target_language=dest)
     return {"translated_text": result["translatedText"]}
-
 
 @app.get("/fetch_statistics")
 async def fetch_statistics(keyword: str):
@@ -342,7 +334,6 @@ async def fetch_statistics(keyword: str):
     }
 
     return JSONResponse(content=statistics)
-
 
 @app.get("/suggested_title")
 async def get_suggested_title(keyword: str):
@@ -393,52 +384,6 @@ async def notify_users(message: str):
     for connection in active_connections:
         await connection.send_text(message)
         logger.info(f"Sent message to {connection.client}: {message}")
-
-@app.get("/ws-test")
-async def get_ws_test():
-    return HTMLResponse("""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>WebSocket Test</title>
-        </head>
-        <body>
-            <h1>WebSocket Test Start</h1>
-            <form onsubmit="sendMessage(event)">
-                <input id="messageText" type="text" value="Hello WebSocket!" />
-                <button type="submit">Send Message</button>
-            </form>
-            <ul id='messages'></ul>
-            <script>
-                console.log("Connecting to WebSocket...");
-                const ws = new WebSocket(`ws://${window.location.hostname}:8000/ws`);
-                ws.onopen = function(event) {
-                    console.log("WebSocket connection opened.");
-                };
-                ws.onmessage = function(event) {
-                    const messages = document.getElementById('messages');
-                    const message = document.createElement('li');
-                    const content = document.createTextNode(event.data);
-                    message.appendChild(content);
-                    messages.appendChild(message);
-                    console.log("Received message:", event.data);
-                };
-
-                function sendMessage(event) {
-                    event.preventDefault();
-                    const input = document.getElementById("messageText");
-                    if (ws.readyState === WebSocket.OPEN) {
-                        ws.send(input.value);
-                        console.log("CHECK INPUT:", input.value);
-                        input.value = '';
-                    } else {
-                        console.error("WebSocket is not open. readyState:", ws.readyState);
-                    }
-                }
-            </script>
-        </body>
-        </html>
-    """)
 
 if __name__ == "__main__":
     import uvicorn

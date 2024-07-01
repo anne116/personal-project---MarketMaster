@@ -14,7 +14,7 @@ const Header = () => {
   useEffect(() => {
     // console.log({ env: process.env })  
     const connectWebSocket = () => {
-      const webSocketUrl = process.env.REACT_APP_WEBSOCKET_URL;
+      const webSocketUrl = process.env.REACT_APP_WEBSOCKET_URL || `wss://${window.location.host}`;
       const socket = new WebSocket(`${webSocketUrl}/ws`);
 
       socket.onopen =() => {

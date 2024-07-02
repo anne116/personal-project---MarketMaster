@@ -19,7 +19,9 @@ from jose import JWTError, jwt
 from pydantic import BaseModel
 from tasks import add_crawl_task
 import logging
-from fastapi.staticfiles import StaticFiles 
+from fastapi.staticfiles import StaticFiles
+import numpy as np
+import pandas as pd
 
 app = FastAPI()
 
@@ -38,7 +40,7 @@ FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["FRONTEND_URL"],
+    allow_origins=[FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -325,12 +327,41 @@ async def fetch_statistics(keyword: str):
     rating_list = [float(product[1]) for product in products]
     review_list = [int(product[2]) for product in products]
 
+    def calculate_bins(data, num_bins=10, round_up=False):
+        min_val = np.floor(min(data)) if not round_up else np.ceil(min(data))
+        max_val = np.ceil(max(data)) + 1e-6
+        step = np.ceil((max_val - min_val) / num_bins)
+        bins = np.arange(min_val, max_val + step, step)
+        return bins
+    
+    price_bins = calculate_bins(price_list, round_up=True)
+    price_bin_labels = [f"${int(price_bins[i])}-${int(price_bins[i+1])}" for i in range(len(price_bins) - 1)]
+    price_range_distribution = pd.cut(price_list, bins=price_bins, labels=price_bin_labels, right=False).value_counts().sort_index().to_dict()
+
+    review_bins = calculate_bins(review_list, round_up=True)
+    review_bin_labels = [f"{int(review_bins[i])}-{int(review_bins[i+1])}" for i in range(len(review_bins) - 1)]
+    review_range_distribution = pd.cut(review_list, bins=review_bins, labels=review_bin_labels, right=False).value_counts().sort_index().to_dict()
+
+    rating_distribution = {
+        '1': rating_list.count(1),
+        '2': rating_list.count(2),
+        '3': rating_list.count(3),
+        '4': rating_list.count(4),
+        '5': rating_list.count(5),
+    }
+
     statistics = {
         "seller_count": len(products),
         "price_range": (min(price_list), max(price_list)),
         "average_price": sum(price_list) / len(price_list),
         "average_rating": sum(rating_list) / len(rating_list),
         "average_reviews": sum(review_list) / len(review_list),
+        "price_list": price_list,
+        "review_list": review_list,
+        "rating_list": rating_list,
+        "price_range_distribution": price_range_distribution,
+        "review_range_distribution": review_range_distribution,
+        "rating_distribution": rating_distribution,
     }
 
     return JSONResponse(content=statistics)
@@ -346,13 +377,13 @@ async def get_suggested_title(keyword: str):
                 {
                     "role": "user",
                     "content": (
-                        f"Generate a catchy product title for a product "
-                        f"related to '{keyword}'"
+                        f"Generate a catchy and relevant product title for a product related to the keyword:'{keyword}'."
+                        f"Make sure the title is clear and engaging and highlights the key benefits of the product."
                     ),
                 },
             ],
-            max_tokens=50,
-            temperature=2,
+            max_tokens=30,
+            temperature=1,
             presence_penalty=2,
         )
         suggested_title = response.choices[0].message.content

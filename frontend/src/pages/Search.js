@@ -15,8 +15,9 @@ import {
   Flex,
   IconButton,
   useToast,
+  Icon,
 } from '@chakra-ui/react';
-import { FaBookmark, FaRegBookmark } from 'react-icons/fa';
+import { FaBookmark, FaRegBookmark, FaStar, FaStarHalfAlt, FaRegStar } from 'react-icons/fa';
 import { useSavedList } from '../index';
 import { debounce } from 'lodash';
 
@@ -184,7 +185,27 @@ const Search = () => {
       return <FaRegBookmark />;
     }
     return isProductSaved(product.id) ? <FaBookmark /> : <FaRegBookmark />;
-;  }
+  };
+
+  const renderStars = (rating) => {
+    const ratingValue = typeof rating === 'string' ? parseFloat(rating.match(/(\d+(\.\d+)?)/)[0]) : rating;
+    const fullStars = Math.floor(ratingValue);
+    const halfStar = rating % 1 >= 0.5;
+    const emptyStars = Math.max(0, 5 - fullStars - halfStar);
+    console.log(`Rating: ${rating}, Full Stars: ${fullStars}, Half Star: ${halfStar}, Empty Stars: ${emptyStars}`);
+
+    return (
+      <>
+        {[...Array(fullStars)].map((_, index) => (
+          <Icon as={FaStar} key={`full-${index}`} color='yellow.400' />
+        ))}
+        {halfStar && <Icon as={FaStarHalfAlt} color='yellow.400' />}
+        {[...Array(emptyStars)].map((_, index) => (
+          <Icon as={FaRegStar} key={`empty-${index}`} color='yellow.400' />
+        ))}
+      </>
+    );
+  };
 
   return (
     <Box p={5} bg='gray.50' minH='100vh'>
@@ -304,7 +325,7 @@ const Search = () => {
                           Price: ${product.price}
                         </Text>
                         <Text mt={0} color='brand.500'>
-                          Rating: {product.rating}
+                          Rating: {renderStars(product.rating)}
                         </Text>
                         <Text mt={0} color='brand.500'>
                           Reviews: {product.reviews}

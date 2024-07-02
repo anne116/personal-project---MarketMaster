@@ -1,11 +1,11 @@
 {
   "files": {
-    "main.js": "/static/js/main.79acc860.js",
+    "main.js": "/static/js/main.cea1756f.js",
     "static/media/MarketMasterLogo.png": "/static/media/MarketMasterLogo.39a5ba91687b71a174b5.png",
     "index.html": "/index.html",
-    "main.79acc860.js.map": "/static/js/main.79acc860.js.map"
+    "main.cea1756f.js.map": "/static/js/main.cea1756f.js.map"
   },
   "entrypoints": [
-    "static/js/main.79acc860.js"
+    "static/js/main.cea1756f.js"
   ]
 }

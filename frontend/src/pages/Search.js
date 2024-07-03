@@ -95,33 +95,33 @@ const Search = () => {
       const token = localStorage.getItem('token');
       if (!token) {
         return;
-      } else {
+      } 
 
-        try {
-          const response = await fetch(`${process.env.REACT_APP_API_URL}/get_savedLists`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/get_savedLists`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-          if (!response.ok) {
-            if (response.status === 401) {
-              console.log('Token expired or invalid');
-              return;
-            }
-              throw new Error(`: ${response.status} ${response.statusText}`);
-        }
-
-          const data = await response.json();
-          setSavedProducts(data);
-        } catch (err) {
-          if (err.message === 'You Have Not Saved Anything Yet!') {
-            setError(err.message);
-          } else {
-          setError(err.message);
+        if (!response.ok) {
+          if (response.status === 401) {
+            localStorage.removeItem('token');
+            return;
           }
+            throw new Error(`: ${response.status} ${response.statusText}`);
+      }
+
+        const data = await response.json();
+        setSavedProducts(data);
+      } catch (err) {
+        if (err.message === 'You Have Not Saved Anything Yet!') {
+          setError(err.message);
+        } else {
+        setError(err.message);
         }
       }
+      
     };
 
     fetchSavedProducts();
@@ -192,7 +192,6 @@ const Search = () => {
     const fullStars = Math.floor(ratingValue);
     const halfStar = rating % 1 >= 0.5;
     const emptyStars = Math.max(0, 5 - fullStars - halfStar);
-    console.log(`Rating: ${rating}, Full Stars: ${fullStars}, Half Star: ${halfStar}, Empty Stars: ${emptyStars}`);
 
     return (
       <>
@@ -291,7 +290,7 @@ const Search = () => {
               <SimpleGrid columns={{ sm: 1, md: 2, lg: 3 }} spacing={6}>
                 {products.map((product) => (
                   <Card
-                    key={product.product_title}
+                    key={product.id}
                     p={4}
                     boxShadow='md'
                     borderRadius='md'

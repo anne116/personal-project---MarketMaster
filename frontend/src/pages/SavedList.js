@@ -67,7 +67,7 @@ const SavedList = () => {
             Authorization: `Bearer ${token}`,
           },
         });
-        if (!response.ok) throw new Error('Failed to fetch saved products');
+        if (!response.ok) throw new Error('Please sign up or sign in.');
         const data = await response.json();
         setSavedProducts(data);
       } catch (err) {

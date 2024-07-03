@@ -22,6 +22,8 @@ import logging
 from fastapi.staticfiles import StaticFiles
 import numpy as np
 import pandas as pd
+import boto3
+from botocore.exceptions import NoCredentialsError, PartialCredentialsError
 
 app = FastAPI()
 
@@ -47,6 +49,11 @@ app.add_middleware(
 )
 
 translate_client = translate.Client()
+
+AWS_S3_BUCKET_NAME = os.getenv("AWS_S3_BUCKET_NAME")
+AWS_S3_ACCESS_KEY_ID = os.getenv("AWS_S3_ACCESS_KEY_ID")
+AWS_S3_SECRET_ACCESS_KEY = os.getenv("AWS_S3_SECRET_ACCESS_KEY")
+AWS_S3_REGION = os.getenv("AWS_REGION")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -96,9 +103,45 @@ class SaveProductRequest(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_home():
-    return FileResponse("frontend/build/index.html")    
-
-app.mount("/static", StaticFiles(directory="frontend/build/static"), name="static")
+    # return FileResponse("frontend/build/index.html")
+    s3 = boto3.client(
+        's3',
+        region_name=AWS_S3_REGION,
+        aws_access_key_id=AWS_S3_ACCESS_KEY_ID,
+        aws_secret_access_id=AWS_S3_SECRET_ACCESS_KEY,
+    )
+    try:
+        obj = s3.get_object(Bucket=AWS_S3_BUCKET_NAME, Key='index.html')
+        return HTMLResponse(obj['Body'].read().decode('utf-8'))
+    except (NoCredentialsError, PartialCredentialsError) as e:
+        logger.error(f"Credentials error: {e}")
+        raise HTTPException(status_code=500, detail="S3 credentials not found or invalid.")
+    except Exception as e:
+        logger.error(f"Error fetching index.html from S3: {e}")
+        raise HTTPException(status_code=500, detail="Error fetching index.html from S3.")
+    
+@app.get("/static/{path:path}")
+async def serve_static(path: str):
+    s3 = boto3.client(
+        's3',
+        region_name=AWS_S3_REGION,
+        aws_access_key_id=AWS_S3_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_S3_SECRET_ACCESS_KEY,
+    )
+    try:
+        obj = s3.get_object(Bucket=AWS_S3_BUCKET_NAME, Key=f'static/{path}')
+        return HTMLResponse(obj['Body'].read())
+    except (NoCredentialsError, PartialCredentialsError) as e:
+        logger.error(f"Credentials error: {e}")
+        raise HTTPException(status_code=500, detail="S3 credentials not found or invalid.")
+    except Exception as e:
+        logger.error(f"Error fetching {path} from S3: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching {path} from S3.")
+    
+# @app.get("/", response_class=HTMLResponse)
+# async def serve_home():
+#     return FileResponse("frontend/build/index.html")
+# app.mount("/static", StaticFiles(directory="frontend/build/static"), name="static")
 
 @app.post("/signup")
 async def signup(signup_request: SignUpRequest):

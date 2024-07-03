@@ -79,7 +79,7 @@ const Header = () => {
             aria-label='Home'
             icon={<FaHome />}
             color='white'
-            fontSize='25px'
+            fontSize='30px'
             bg='transparent'
             _hover={{ bg: 'brand.600' }}
             mx={2}
@@ -113,7 +113,7 @@ const Header = () => {
             aria-label='Notification'
             icon={
               <Box position='relative'>
-                <FaBell />
+                <FaBell size={27} />
                 {newNotifications > 0 && (
                   <Badge
                     colorScheme='red'
@@ -121,7 +121,7 @@ const Header = () => {
                     position='absolute'
                     top='-1'
                     right='-1'
-                    fontSize='0.8em'
+                    fontSize='1em'
                   >
                     {newNotifications}
                   </Badge>

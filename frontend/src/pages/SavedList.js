@@ -62,7 +62,7 @@ const SavedList = () => {
         return;
       }
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/get_savedLists`, {
+        const response = await fetch('/get_savedLists', {
           headers: {
             Authorization: `Bearer ${token}`,
           },

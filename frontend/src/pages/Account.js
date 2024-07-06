@@ -32,7 +32,7 @@ const Account = () => {
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          const response = await fetch(`${process.env.REACT_APP_API_URL}/profile`, {
+          const response = await fetch('/profile', {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -58,7 +58,7 @@ const Account = () => {
     setError(null);
     setMessage(null);
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/signup`, {
+      const response = await fetch('/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -95,7 +95,7 @@ const Account = () => {
     setError(null);
     setMessage(null);
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/signin`, {
+      const response = await fetch('/signin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',

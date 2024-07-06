@@ -22,7 +22,7 @@ const Profile = () => {
         return;
       }
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/profile`, {
+        const response = await fetch('/profile', {
           headers: {
             Authorization: `Bearer ${token}`,
           },

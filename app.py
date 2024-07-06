@@ -108,7 +108,7 @@ async def serve_home():
         's3',
         region_name=AWS_S3_REGION,
         aws_access_key_id=AWS_S3_ACCESS_KEY_ID,
-        aws_secret_access_id=AWS_S3_SECRET_ACCESS_KEY,
+        aws_secret_access_key=AWS_S3_SECRET_ACCESS_KEY,
     )
     try:
         obj = s3.get_object(Bucket=AWS_S3_BUCKET_NAME, Key='index.html')

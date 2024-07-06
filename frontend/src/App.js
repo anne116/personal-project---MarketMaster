@@ -7,6 +7,10 @@ import Home from './pages/Home';
 import Account from './pages/Account';
 import SavedList from './pages/SavedList';
 import Profile from './pages/Profile';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfServices from './pages/TermsOfServices';
+import Contact from './pages/Contact';
+import Footer from './components/Footer';
 
 const App = () => {
   return (
@@ -19,7 +23,11 @@ const App = () => {
         <Route path='/account' element={<Account />} />
         <Route path='/profile' element={<Profile />} />
         <Route path='/saved' element={<SavedList />} />
+        <Route path='/privacy' element={<PrivacyPolicy />} />
+        <Route path='/terms' element={<TermsOfServices />} />
+        <Route path='/contact' element={<Contact />} />
       </Routes>
+      <Footer />
     </BrowserRouter>
   );
 };

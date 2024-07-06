@@ -39,7 +39,7 @@ const Search = () => {
     try {
       setFetching(true);
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/fetch_products?keyword=${encodeURIComponent(keyword)}`,
+        `/fetch_products?keyword=${encodeURIComponent(keyword)}`,
       );
       const data = await response.json();
       setProducts(data);
@@ -58,7 +58,7 @@ const Search = () => {
   
     try {
       const translateResponse = await fetch(
-        `${process.env.REACT_APP_API_URL}/translate?text=${encodeURIComponent(searchKeyword)}&dest=${displayLanguage}`,
+        `/translate?text=${encodeURIComponent(searchKeyword)}&dest=${displayLanguage}`,
       );
       if (!translateResponse.ok) throw new Error('Failed to fetch translation');
       const translateData = await translateResponse.json();
@@ -98,7 +98,7 @@ const Search = () => {
       } 
 
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/get_savedLists`, {
+        const response = await fetch('/get_savedLists', {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -209,150 +209,154 @@ const Search = () => {
   return (
     <Box p={5} bg='gray.50' minH='100vh'>
       <Box maxW='1200px' mx='auto'>
-        <Heading as='h3' size='lg' mb={6} textAlign='center'>
-          Product Search
-        </Heading>
-        <VStack spacing={4} align='stretch'>
-          <Input
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            placeholder='Enter product keyword'
-            size='lg'
-            borderColor='gray.400'
-            _hover={{ borderColor: 'gray.600' }}
-            focusBorderColor='blue.500'
-          />
 
-          <Select
-            value={displayLanguage}
-            onChange={(e) => setDisplayLanguage(e.target.value)}
-            size='lg'
-            borderColor='gray.400'
-            _hover={{ borderColor: 'gray.600' }}
-            focusBorderColor='blue.500'
-          >
-            <option value='en'>English</option>
-            <option value='es'>Spanish</option>
-            <option value='fr'>French</option>
-            <option value='de'>German</option>
-            <option value='zh-CN'>Chinese</option>
-            <option value='ja'>Japanese</option>
-          </Select>
-
-          <Button
-            onClick={handleSearchClick}
-            colorScheme='blue'
-            size='lg'
-            width='full'
-          >
-            Search
-          </Button>
-
-          {translatedText && (
-            <Button
-              onClick={handleAnalysisClick}
-              colorScheme='teal'
+        <Flex direction='column' justifyContent='center' alignItems='center' minH='70vh'>
+          <Heading as='h3' size='lg' mt={10} mb={10} textAlign='center'>
+          Start Your Product Search:
+          </Heading>
+          <VStack spacing={4} align='stretch' width='50%'>
+            <Input
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder='Enter product keyword (e.g. camera or 相機）'
               size='lg'
-              mt={4}
-              width='full'
+              borderColor='gray.400'
+              _hover={{ borderColor: 'gray.600' }}
+              focusBorderColor='blue.500'
+            />
+
+            {/* <Select
+              value={displayLanguage}
+              onChange={(e) => setDisplayLanguage(e.target.value)}
+              size='lg'
+              borderColor='gray.400'
+              _hover={{ borderColor: 'gray.600' }}
+              focusBorderColor='blue.500'
             >
-              More Analytic Insights
+              <option value='en'>English</option>
+              <option value='es'>Spanish</option>
+              <option value='fr'>French</option>
+              <option value='de'>German</option>
+              <option value='zh-CN'>Chinese</option>
+              <option value='ja'>Japanese</option>
+            </Select> */}
+
+            <Button
+              onClick={handleSearchClick}
+              colorScheme='blue'
+              size='lg'
+            >
+              Search
             </Button>
-          )}
+          </VStack>
+        </Flex>
+      
+        <Box mt={6}>
+          <VStack spacing={4} align='stretch' width='100%'>
+            {translatedText && (
+              <Box mt={4} textAlign='center'>
+                <Heading as='h4' size='md' mb={2}>
+                  The keyword that you're searching: {translatedText}
+                </Heading>
+              </Box>
+            )}
+            {translatedText && (
+              <Flex justifyContent='center' width='100%'>
+                <Button
+                  onClick={handleAnalysisClick}
+                  colorScheme='teal'
+                  size='lg'
+                  mt={4}
+                  width='50%'
+                >
+                  Click to View More Analytic Insights
+                </Button>
+              </Flex>
+            )}
+            
+            {/* <Button as={Link} to='/saved' colorScheme='blue' size='lg' width='80%' align='center'>
+              View Your Saved List
+            </Button> */}
 
-          {translatedText && (
-            <Box mt={4} textAlign='center'>
-              <Heading as='h4' size='md' mb={2}>
-                Translated Text
-              </Heading>
-              <Text fontSize='lg' color='gray.700'>
-                {translatedText}
-              </Text>
-            </Box>
-          )}
-          
-          <Button as={Link} to='/saved' colorScheme='blue' size='lg'>
-            View Your Saved List
-          </Button>
+            {fetching && (
+              <Box display='flex' justifyContent='center' mt={4}>
+                <Spinner mr={2} />
+                <Text>Fetching data. Please wait...</Text>
+              </Box>
+            )}
 
-          {fetching && (
-            <Box display='flex' justifyContent='center' mt={4}>
-              <Spinner mr={2} />
-              <Text>Fetching data. Please wait...</Text>
-            </Box>
-          )}
-
-          {products.length > 0 && (
-            <Box mt={4}>
-              <Heading as='h3' size='md' mb={4} color='brand.900'>
-                Search Results:
-              </Heading>
-              <SimpleGrid columns={{ sm: 1, md: 2, lg: 3 }} spacing={6}>
-                {products.map((product) => (
-                  <Card
-                    key={product.id}
-                    p={4}
-                    boxShadow='md'
-                    borderRadius='md'
-                  >
-                    <Flex direction='column' h='100%'>
-                      <Flex direction='row' justify='space-between' mb={4}>
-                        <Image
-                          objectFit='contain'
-                          boxSize='130px'
-                          src={product.main_Image}
-                          alt={product.product_title}
-                        />
-                        <Heading
-                          size='sm'
-                          ml={4}
-                          alignSelf='center'
-                          color='brand.800'
-                        >
-                          {product.product_title}
-                        </Heading>
-                        <IconButton
-                          aria-label='Save'
-                          icon={renderSaveIcon(product)}
-                          onClick={() => handleSaveProduct(product)}
-                          colorScheme='teal'
-                          variant='outline'
-                        />
+            {products.length > 0 && (
+              <Box mt={4}>
+                <Heading as='h3' size='md' mb={4} color='brand.900'>
+                  Search Results:
+                </Heading>
+                <SimpleGrid columns={{ sm: 1, md: 2, lg: 3 }} spacing={6}>
+                  {products.map((product) => (
+                    <Card
+                      key={product.id}
+                      p={4}
+                      boxShadow='md'
+                      borderRadius='md'
+                    >
+                      <Flex direction='column' h='100%'>
+                        <Flex direction='row' justify='space-between' mb={4}>
+                          <Image
+                            objectFit='contain'
+                            boxSize='130px'
+                            src={product.main_Image}
+                            alt={product.product_title}
+                          />
+                          <Heading
+                            size='sm'
+                            ml={4}
+                            alignSelf='center'
+                            color='brand.800'
+                          >
+                            {product.product_title}
+                          </Heading>
+                          <IconButton
+                            aria-label='Save'
+                            icon={renderSaveIcon(product)}
+                            onClick={() => handleSaveProduct(product)}
+                            colorScheme='teal'
+                            variant='outline'
+                          />
+                        </Flex>
+                        <Box mt='auto'>
+                          <Text mt={0} color='brand.500'>
+                            Price: ${product.price}
+                          </Text>
+                          <Text mt={0} color='brand.500'>
+                            Rating: {renderStars(product.rating)}
+                          </Text>
+                          <Text mt={0} color='brand.500'>
+                            Reviews: {product.reviews}
+                          </Text>
+                          <Button
+                            as='a'
+                            href={product.url}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            colorScheme='brand.500'
+                            mt={3}
+                          >
+                            View Product
+                          </Button>
+                        </Box>
                       </Flex>
-                      <Box mt='auto'>
-                        <Text mt={0} color='brand.500'>
-                          Price: ${product.price}
-                        </Text>
-                        <Text mt={0} color='brand.500'>
-                          Rating: {renderStars(product.rating)}
-                        </Text>
-                        <Text mt={0} color='brand.500'>
-                          Reviews: {product.reviews}
-                        </Text>
-                        <Button
-                          as='a'
-                          href={product.url}
-                          target='_blank'
-                          rel='noopener noreferrer'
-                          colorScheme='brand.500'
-                          mt={3}
-                        >
-                          View Product
-                        </Button>
-                      </Box>
-                    </Flex>
-                  </Card>
-                ))}
-              </SimpleGrid>
-            </Box>
-          )}
+                    </Card>
+                  ))}
+                </SimpleGrid>
+              </Box>
+            )}
 
-          {error && (
-            <Text color='red.500' mt={4} textAlign='center'>
-              {error}
-            </Text>
-          )}
-        </VStack>
+            {error && (
+              <Text color='red.500' mt={4} textAlign='center'>
+                {error}
+              </Text>
+            )}
+          </VStack>
+        </Box>
       </Box>
     </Box>
   );

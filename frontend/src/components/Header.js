@@ -58,9 +58,9 @@ const Header = () => {
 
   return (
     <Box bg='brand.500' p={3}>
-      <Flex maxW='1200px' mx='auto' align='center'>
+      <Flex mx='auto' align='center'>
         <Link to='/'>
-          <Image src={MarketMasterLogo} alt='logo' boxSize='50px' />
+          <Image src={MarketMasterLogo} alt='logo' width='150px' height='55px' style={{ borderRadius: '10px' }}/>
         </Link>
         <Spacer />
         <Link to='/search'>

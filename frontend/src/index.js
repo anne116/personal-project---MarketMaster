@@ -48,7 +48,7 @@ const SavedListProvider = ({ children }) => {
   const removeProduct = async (product_id) => {
     const token = localStorage.getItem('token');
     const response = await fetch(
-      '/unsave_product/${product_id}',
+      `/unsave_product/${encodeURIComponent(product_id)}`,
       {
         method: 'DELETE',
         headers: {

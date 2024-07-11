@@ -109,7 +109,7 @@ const SavedList = () => {
                 <Flex direction='column' h='100%'>
                   <Flex direction='row' justify='space-between' mb={4}>
                     <Image
-                      objectFit='cover'
+                      objectFit='contain'
                       boxSize='100px'
                       src={product.mainImage_url}
                       alt={product.title}

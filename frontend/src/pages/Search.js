@@ -273,10 +273,6 @@ const Search = () => {
                 </Button>
               </Flex>
             )}
-            
-            {/* <Button as={Link} to='/saved' colorScheme='blue' size='lg' width='80%' align='center'>
-              View Your Saved List
-            </Button> */}
 
             {fetching && (
               <Box display='flex' justifyContent='center' mt={4}>

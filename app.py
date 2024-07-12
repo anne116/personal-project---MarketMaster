@@ -92,7 +92,7 @@ class SaveProductRequest(BaseModel):
 
     product_id: int
 
-@app.post("/signup")
+@app.post("/api/signup")
 async def signup(signup_request: SignUpRequest):
     """Endpoint to handle user signup"""
     user_id = str(uuid.uuid4())
@@ -118,7 +118,7 @@ async def signup(signup_request: SignUpRequest):
         conn.close()
     return {"message": "User created successfully!", "access_token": access_token}
 
-@app.post("/signin")
+@app.post("/api/signin")
 async def signin(form_data: OAuth2PasswordRequestForm = Depends()):
     """Endpoint to handle user signin"""
     conn = get_db_connection()
@@ -155,7 +155,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception from err
     return user_id
 
-@app.get("/profile")
+@app.get("/api/profile")
 async def get_profile(user_id: str = Depends(get_current_user)):
     """Get user profile"""
     conn = get_db_connection()
@@ -172,7 +172,7 @@ async def get_profile(user_id: str = Depends(get_current_user)):
         cursor.close()
         conn.close()
 
-@app.post("/save_to_savedLists")
+@app.post("/api/save_to_savedLists")
 async def save_to_saved_lists(
     save_request: SaveProductRequest, user_id: str = Depends(get_current_user)
 ):
@@ -199,7 +199,7 @@ async def save_to_saved_lists(
 
     return {"message": "Product saved successfully!"}
 
-@app.delete("/unsave_product/{product_id}")
+@app.delete("/api/unsave_product/{product_id}")
 async def unsave_product(product_id: int, user_id: str = Depends(get_current_user)):
     """Remove a product from user's saved product list"""
     conn = get_db_connection()
@@ -215,7 +215,7 @@ async def unsave_product(product_id: int, user_id: str = Depends(get_current_use
         conn.close()
     return {"message": "Product unsaved successfully!"}
 
-@app.get("/get_savedLists")
+@app.get("/api/get_savedLists")
 async def get_saved_lists(user_id: str = Depends(get_current_user)):
     """Get user's saved product list"""
     conn = get_db_connection()
@@ -239,7 +239,7 @@ async def get_saved_lists(user_id: str = Depends(get_current_user)):
         conn.close()
     return products if products else []
 
-@app.get("/fetch_products")
+@app.get("/api/fetch_products")
 async def fetch_products(keyword: str):
     """Fetch product information based on a keyword"""
     conn = get_db_connection()
@@ -279,7 +279,7 @@ async def fetch_products(keyword: str):
     print("Fetched products from DB:", product_list)
     return JSONResponse(content=product_list)
 
-@app.get("/translate")
+@app.get("/api/translate")
 async def translate_text(
     text: str = Query(..., description="Text to translate"),
     dest: str = Query(..., description="Destination language"),
@@ -288,7 +288,7 @@ async def translate_text(
     result = translate_client.translate(text, target_language=dest)
     return {"translated_text": result["translatedText"]}
 
-@app.get("/fetch_statistics")
+@app.get("/api/fetch_statistics")
 async def fetch_statistics(keyword: str):
     """Fetch statistics for products based on a keyword"""
     conn = get_db_connection()
@@ -358,7 +358,7 @@ async def fetch_statistics(keyword: str):
 
     return JSONResponse(content=statistics)
 
-@app.get("/suggested_title")
+@app.get("/api/suggested_title")
 async def get_suggested_title(keyword: str):
     """Generate a suggested product title based on keyword"""
     try:
@@ -383,7 +383,7 @@ async def get_suggested_title(keyword: str):
     except Exception as err:
         raise HTTPException(status_code=500, detail=str(err)) from err
 
-@app.websocket("/ws")
+@app.websocket("/api/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     active_connections.append(websocket)

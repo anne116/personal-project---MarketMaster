@@ -15,7 +15,7 @@ const Header = () => {
     // console.log({ env: process.env })  
     const connectWebSocket = () => {
       const webSocketUrl = process.env.REACT_APP_WEBSOCKET_URL || `wss://${window.location.host}`;
-      const socket = new WebSocket(`${webSocketUrl}/ws`);
+      const socket = new WebSocket(`${webSocketUrl}/api/ws`);
 
       socket.onopen =() => {
         console.log('WebSocket is connected');

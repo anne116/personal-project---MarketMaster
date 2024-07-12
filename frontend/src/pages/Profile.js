@@ -22,7 +22,7 @@ const Profile = () => {
         return;
       }
       try {
-        const response = await fetch('/profile', {
+        const response = await fetch('/api/profile', {
           headers: {
             Authorization: `Bearer ${token}`,
           },

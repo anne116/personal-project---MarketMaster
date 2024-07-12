@@ -15,7 +15,7 @@ const SavedListProvider = ({ children }) => {
 
     const token = localStorage.getItem('token');
     try {
-      const response = await fetch('/save_to_savedLists', {
+      const response = await fetch('/api/save_to_savedLists', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -48,7 +48,7 @@ const SavedListProvider = ({ children }) => {
   const removeProduct = async (product_id) => {
     const token = localStorage.getItem('token');
     const response = await fetch(
-      `/unsave_product/${encodeURIComponent(product_id)}`,
+      `/api/unsave_product/${encodeURIComponent(product_id)}`,
       {
         method: 'DELETE',
         headers: {

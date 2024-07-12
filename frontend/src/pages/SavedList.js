@@ -62,7 +62,7 @@ const SavedList = () => {
         return;
       }
       try {
-        const response = await fetch('/get_savedLists', {
+        const response = await fetch('/api/get_savedLists', {
           headers: {
             Authorization: `Bearer ${token}`,
           },

@@ -2,6 +2,9 @@
 This module implements the FastAPI applcation with various endpoints
 for user authentication, product management, translation, title suggestion, and other features
 """
+import fasttext
+import spacy
+from spellchecker import SpellChecker
 import os
 import uuid
 from typing import Optional
@@ -23,8 +26,67 @@ import numpy as np
 import pandas as pd
 
 app = FastAPI()
-
 load_dotenv()
+
+nlp = spacy.load('en_core_web_sm')
+fasttext_model = fasttext.load_model('models/cc.en.300.bin')
+spell = SpellChecker()
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def validate_keyword(keyword):
+    """
+    Validate the keyword against a list of known valid words using SpaCy and check if it's a meaningful word
+    """
+    logger.info(f"Validating keyword: {keyword}")
+    if not keyword.isalpha():
+        logger.warning(f"Keyword '{keyword}' is not valid word")
+        return False
+    return True
+
+def correct_typo(keyword):
+    """
+    Correct typos in the keyword using pyspellchecker.
+    """
+    try:
+        corrected_keyword = spell.correction(keyword)
+        if corrected_keyword != keyword: 
+            logger.info(f"Corrected '{keyword}' to '{corrected_keyword}' ")
+        return corrected_keyword
+    except Exception as err:
+        logger.error(f"Error in typo correction for keyword '{keyword}': {str(err)}")
+    return keyword
+
+def normalize_keyword(keyword):
+    """
+    Normalize the given keyword by converting to lowercase, removing extra spaces,
+    lemmatizing, and handling typos using word embeddings.
+    """
+    try:
+        logger.info(f"Original keyword: {keyword}")
+        keyword = keyword.lower()
+        keyword = ' '.join(keyword.split())
+        doc = nlp(keyword)
+        lemma = ' '.join([token.lemma_ for token in doc])
+        logger.info(f"Lemmatized keyword: {lemma}")
+        corrected_keyword = correct_typo(lemma)
+        logger.info(f"Corrected keyword: {corrected_keyword}")
+        if not validate_keyword(corrected_keyword):
+            logger.warning(f"Keyword '{corrected_keyword}' failed validation")
+            return None
+        return corrected_keyword
+    except Exception as err:
+        logger.error(f"Error normalizing keyword: {keyword} - {str(err)}")
+        return None
+
+@app.get("/api/validate_keyword")
+async def validate_keyword_endpoint(keyword: str):
+    normalized_keyword = normalize_keyword(keyword)
+    if normalized_keyword:
+        return {"valid": True, "normalized_keyword": normalized_keyword}
+    else:
+        return {"valid": False}, 400
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"google-translate-key.json"
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
@@ -46,9 +108,6 @@ app.add_middleware(
 )
 
 translate_client = translate.Client()
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 active_connections = []
 
@@ -241,39 +300,52 @@ async def get_saved_lists(user_id: str = Depends(get_current_user)):
 
 @app.get("/api/fetch_products")
 async def fetch_products(keyword: str):
-    """Fetch product information based on a keyword"""
+    """Validate keyword first then fetch product information based on the keyword"""
+    normalized_keyword = normalize_keyword(keyword)
+    if not normalized_keyword:
+        raise HTTPException(status_code=400, detail="Invalid keyword. Please enter a meaningful search term.")
+
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("SELECT keyword FROM normalized_keywords WHERE FIND_IN_SET(%s, keyword_pool)", (normalized_keyword,))
+    result = cursor.fetchone()
+
+    if result:
+        normalized_keyword = result['keyword']
+    else:
+        add_crawl_task(normalized_keyword)
+        logger.info(f"No products found for keyword '{normalized_keyword}', crawl task added")
+        raise HTTPException(
+            status_code=202, detail='Keyword not found. A crawl task has been added to the queue'
+        )
+    
     cursor.execute(
         """
         SELECT id, mainImage_url, title, CONCAT(REPLACE(price_whole, '\n', ''), '.', LPAD(price_fraction, 2, '0')) AS price, rating, reviews, url
         FROM products
         WHERE keyword = %s
         """,
-        (keyword,),
+        (normalized_keyword,),
     )
     products = cursor.fetchall()
 
-    if not products:
-        add_crawl_task(keyword)
-        logger.info(f"No products found for keyword '{keyword}', crawl task added")
-        raise HTTPException(
-            status_code=202, detail='Keyword not found. A crawl task has been added to the queue'
-        )
-    
     cursor.close()
     conn.close()
+
+    if not products:
+        raise HTTPException(status_code=404, detail="no products found for the keyword")
 
     product_list = []
     for product in products:
         product_dict = {
-            "id": product[0],
-            "main_Image": product[1],
-            "product_title": product[2],
-            "price": product[3],
-            "rating": product[4],
-            "reviews": product[5],
-            "url": product[6],
+            "id": product['id'],
+            "main_Image": product['mainImage_url'],
+            "product_title": product['title'],
+            "price": product['price'],
+            "rating": product['rating'],
+            "reviews": product['reviews'],
+            "url": product['url'],
         }
         product_list.append(product_dict)
     print("Fetched products from DB:", product_list)

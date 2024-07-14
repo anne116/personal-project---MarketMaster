@@ -57,8 +57,17 @@ const Search = () => {
     setFetching(true);
   
     try {
+      const validateResponse = await fetch(`/api/validate_keyword?keyword=${encodeURIComponent(searchKeyword)}`);
+      const validateData = await validateResponse.json();
+
+      if (!validateData.valid) {
+        throw new Error('Invalid keyword. Please enter a meaningful search term.');
+      }
+
+      const normalizedKeyword = validateData.normalized_keyword;
+
       const translateResponse = await fetch(
-        `/api/translate?text=${encodeURIComponent(searchKeyword)}&dest=${displayLanguage}`,
+        `/api/translate?text=${encodeURIComponent(normalizedKeyword)}&dest=${displayLanguage}`,
       );
       if (!translateResponse.ok) throw new Error('Failed to fetch translation');
       const translateData = await translateResponse.json();
@@ -66,15 +75,23 @@ const Search = () => {
       setTranslatedText(englishKeyword);
   
       await fetchProducts(englishKeyword);
+
       if (updateUrl) {
         navigate(`?keyword=${encodeURIComponent(searchKeyword)}`);
       }
     } catch (err) {
       setError(err.message);
+      toast({
+        title: 'Error',
+        description: err.message,
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
     } finally {
       setFetching(false);
     }
-  }, [displayLanguage, navigate]);
+  }, [displayLanguage, navigate, toast]);
 
   const debounceHandleSearch = useCallback(
     debounce((searchKeyword, updateUrl = true) => {

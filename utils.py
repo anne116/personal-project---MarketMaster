@@ -110,6 +110,10 @@ def store_keyword(keyword):
             cursor = connection.cursor()
             add_keyword = "INSERT INTO keywords (keyword) VALUES (%s)"
             cursor.execute(add_keyword, (keyword,))
+
+            add_normalized_keyword = "INSERT INTO normalized_keywords (keyword, keyword_pool) VALUES (%s, %s)"
+            cursor.execute(add_normalized_keyword, (keyword, keyword))
+            
             connection.commit()
         except Error as err:
             print(f"Error storing keyword: {err}")

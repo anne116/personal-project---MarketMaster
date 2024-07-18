@@ -53,7 +53,7 @@ const Home = () => {
           <VStack spacing={10} justify='center' mb={6}>
             <Box maxW='1200px' textAlign='center' mb={6}>
               <HStack maxW='1000px' mx='auto' spacing={10} align='start'>
-                <Image src={worriedImage1} alt='worried individual' boxSize='300px' />
+                <Image src={worriedImage1} alt='worried individual' boxSize='full' borderRadius='md'   />
                 <Box textAlign="left">
                   <Heading as='h3' fontSize='28px' mt={8} mb={2}>
                     Feeling Overwhelmed by Information Overload.
@@ -64,10 +64,12 @@ const Home = () => {
                 </Box>
               </HStack>
             </Box>
+            <br/>
+            <br/>
 
             <Box maxW='1200px' textAlign='center' mb={6}>
               <HStack maxW='1000px' mx='auto' spacing={10} align='start' flexDirection='row-reverse'>
-                <Image src={worriedImage2} alt='worried individual' boxSize='300px' />
+                <Image src={worriedImage2} alt='worried individual' boxSize='full' borderRadius='md'   />
                 <Box textAlign="left">
                   <Heading as='h3' fontSize='28px' mt={8} mb={2}>
                     Facing Pricing Dilemma
@@ -78,10 +80,12 @@ const Home = () => {
                 </Box>
               </HStack>
             </Box>
+            <br/>
+            <br/>
 
             <Box maxW='1200px' textAlign='center' mb={6}>
               <HStack maxW='1000px' mx='auto' spacing={10} align='start'>
-                <Image src={worriedImage3} alt='worried individual' boxSize='300px' />
+                <Image src={worriedImage3} alt='worried individual' boxSize='full' borderRadius='md'  />
                 <Box textAlign='left'>
                   <Heading as='h3' fontSize='28px' mt={8} mb={2}>
                     Losing Tracks of Products Performance
@@ -92,10 +96,12 @@ const Home = () => {
                 </Box>
               </HStack>
             </Box>
+            <br/>
+            <br/>
 
             <Box maxW='1200px' textAlign='center' mb={6}>
               <HStack maxW='1000px' mx='auto' spacing={10} align='start' flexDirection='row-reverse'>
-                <Image src={worriedImage4} alt='worried individual' boxSize='300px' />
+                <Image src={worriedImage4} alt='worried individual' boxSize='full' borderRadius='md'  />
                 <Box textAlign='left'>
                   <Heading as='h3' fontSize='28px' mt={8} mb={2}>
                     Not Having Enough Time to Monitor Market Products

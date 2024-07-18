@@ -16,10 +16,17 @@ import {
   IconButton,
   useToast,
   Icon,
+  Alert,
+  AlertIcon,
+  AlertTitle,
+  AlertDescription,
 } from '@chakra-ui/react';
 import { FaBookmark, FaRegBookmark, FaStar, FaStarHalfAlt, FaRegStar } from 'react-icons/fa';
 import { useSavedList } from '../index';
 import { debounce } from 'lodash';
+import { v4 as uuidv4 } from 'uuid';
+
+
 
 const Search = () => {
   const [keyword, setKeyword] = useState('');
@@ -29,36 +36,103 @@ const Search = () => {
   const [error, setError] = useState(null);
   const [fetching, setFetching] = useState(false);
   const [savedProducts, setSavedProducts] = useState([]);
+  const [ws, setWs] = useState(null);
+  const [notification, setNotification] = useState('');
+  const [showAlert, setShowAlert] = useState(false);
 
   const { saveProduct } = useSavedList();
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
 
+  const getSessionId = () => {
+    let sessionId = localStorage.getItem('sessionId');
+    if (!sessionId) {
+      sessionId = uuidv4();
+      localStorage.setItem('sessionId', sessionId);
+    }
+    return sessionId;
+  };
+
+  const startWebSocket = (sessionId) => {
+    const webSocketUrl = process.env.REACT_APP_WEBSOCKET_URL || `wss://${window.location.host}`;
+    const socket = new WebSocket(`${webSocketUrl}/api/ws/${sessionId}`);
+
+    socket.onopen = () => {
+      console.log('WebSocket is connected');
+    };
+    socket.onmessage = (event) => {
+      console.log('Notification received:', event.data);
+      const data = JSON.parse(event.data);
+      setNotification(data.message);
+      setShowAlert(true);
+    };
+    socket.onclose = (event) => {
+      console.log('WebSocket connection closed.', event);
+      setTimeout(() => {
+        console.log('Reconnecting WebSocket...');
+        startWebSocket(sessionId);
+      }, 5000);
+    };
+    socket.onerror = (error) => {
+      console.log('WebSocket error:', error);
+    };
+    setWs(socket);
+  };
+
   const fetchProducts = async (keyword) => {
     try {
+      const sessionId = getSessionId();
+
       setFetching(true);
+      console.log(`Fetching products for keyword: ${keyword}, sessionId: ${sessionId}`);
       const response = await fetch(
-        `/api/fetch_products?keyword=${encodeURIComponent(keyword)}`,
+        `/api/fetch_products?keyword=${encodeURIComponent(keyword)}&sessionId=${encodeURIComponent(sessionId)}`,
       );
+
+      if (response.status === 202) {
+        console.log('New crawl task is added.')
+        return { products: [], new_crawl: true };
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const responseText = await response.text();
+        console.error('Unexpected response format:', responseText); // Log the entire response for debugging
+        throw new Error(`Unexpected response format: ${responseText}`);
+      }
+  
+      if (!response.ok) {
+        const responseText = await response.text();
+        console.error('Error response:', responseText); // Log the entire response for debugging
+        throw new Error(`Error: ${response.status} ${response.statusText}`);
+      }
+      
       const data = await response.json();
-      setProducts(data);
+      console.log('Fetched products data:', data);
+      return { products: data, new_crawl: false };
     } catch (err) {
+      console.error('Failed to fetch products:', err);
       setError(err.message);
+      return { products: [], new_crawl: false };
     } finally {
       setFetching(false);
     }
   };
 
   const handleSearch = useCallback(async (searchKeyword, updateUrl = true) => {
+    console.log('handleSearch called with:', searchKeyword);
     setError(null);
     setTranslatedText(null);
     setProducts([]);
     setFetching(true);
+    setNotification('');
+    setShowAlert(false);
   
     try {
       const validateResponse = await fetch(`/api/validate_keyword?keyword=${encodeURIComponent(searchKeyword)}`);
       const validateData = await validateResponse.json();
+      console.log('Keyword validation response:', validateData);
 
       if (!validateData.valid) {
         throw new Error('Invalid keyword. Please enter a meaningful search term.');
@@ -74,12 +148,37 @@ const Search = () => {
       const englishKeyword = translateData.translated_text;
       setTranslatedText(englishKeyword);
   
-      await fetchProducts(englishKeyword);
-
       if (updateUrl) {
         navigate(`?keyword=${encodeURIComponent(searchKeyword)}`);
       }
+
+      const fetchData = await fetchProducts(englishKeyword)
+      setProducts(fetchData.products);
+      if (fetchData.new_crawl) {
+        const sessionId = getSessionId();
+
+        let keywords;
+        const keywordsString = localStorage.getItem('keywords');
+        if (keywordsString) {
+          try {
+            console.log('keywords before parsing:', keywordsString);
+            keywords = JSON.parse(keywordsString);
+          } catch (parseError) {
+            console.log('Error parsing keywords from localStorage:', parseError);
+            keywords = [];
+          }
+        } else {
+          keywords = [];
+        }
+
+        keywords.push(searchKeyword);
+        localStorage.setItem('keywords', JSON.stringify(keywords));
+        startWebSocket(sessionId);
+        setNotification('Your input is received! We are currently processing your request. You will be notified via the bell icon in the top right corner once the process is complete.');
+        setShowAlert(true);
+      }
     } catch (err) {
+      console.error('Error in handleSearch:', err);
       setError(err.message);
       toast({
         title: 'Error',
@@ -95,12 +194,14 @@ const Search = () => {
 
   const debounceHandleSearch = useCallback(
     debounce((searchKeyword, updateUrl = true) => {
+      console.log('debounceHandleSearch called with:', searchKeyword);
       handleSearch(searchKeyword, updateUrl);
     }, 300),
     [handleSearch]
   );
 
   useEffect(() => {
+    console.log('useEffect triggered');
     const params = new URLSearchParams(location.search);
     const queryKeyword = params.get('keyword');
     if (queryKeyword) {
@@ -142,6 +243,13 @@ const Search = () => {
     };
 
     fetchSavedProducts();
+
+    const sessionId = localStorage.getItem('sessionId');
+    const searchKeyword = localStorage.getItem('searchKeyword');
+    if (sessionId && searchKeyword) {
+      startWebSocket(sessionId);
+    }
+
   }, [location.search, debounceHandleSearch]);
 
   const handleSearchClick = () => {
@@ -231,11 +339,20 @@ const Search = () => {
           <Heading as='h3' size='lg' mt={10} mb={10} textAlign='center'>
           Start Your Product Search:
           </Heading>
+
+          {showAlert && (
+            <Alert status='info' mb={4}>
+              <AlertIcon />
+              <AlertTitle>Notification</AlertTitle>
+              <AlertDescription>{notification}</AlertDescription>
+            </Alert>
+          )}
+
           <VStack spacing={4} align='stretch' width='50%'>
             <Input
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder='Enter product keyword (e.g. camera or 相機）'
+              placeholder='Enter product keyword (e.g. camera, pet toy, mascara...)'
               size='lg'
               borderColor='gray.400'
               _hover={{ borderColor: 'gray.600' }}

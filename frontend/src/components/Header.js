@@ -12,10 +12,14 @@ const Header = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // console.log({ env: process.env })  
     const connectWebSocket = () => {
+      const sessionId = localStorage.getItem('sessionId');
+      if (!sessionId) {
+        console.log('There is no session id currently.');
+        return;
+      }
       const webSocketUrl = process.env.REACT_APP_WEBSOCKET_URL || `wss://${window.location.host}`;
-      const socket = new WebSocket(`${webSocketUrl}/api/ws`);
+      const socket = new WebSocket(`${webSocketUrl}/api/ws/${sessionId}`);
 
       socket.onopen =() => {
         console.log('WebSocket is connected');
@@ -42,7 +46,9 @@ const Header = () => {
     }  
     const socket = connectWebSocket();
     return () => {
-      socket.close();
+      if (socket) {
+        socket.close();
+      }
     }
   }, []);
 

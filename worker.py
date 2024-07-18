@@ -11,8 +11,10 @@ from utils import keyword_exists, store_keyword
 from crawl_amazon_product_data import fetch_product_info
 from dotenv import load_dotenv
 import logging
+import requests
 
 load_dotenv()
+NOTIFY_URL = os.getenv('NOTIFY_URL')
 
 AWS_SQS_QUEUE_URL = os.getenv('AWS_SQS_QUEUE_URL')
 WEBSOCKET_URL = os.getenv('WEBSOCKET_URL')
@@ -27,35 +29,50 @@ sqs = boto3.client(
     aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY')
 )
 
-async def notify_websocket(message, keyword):
+async def notify_app(sessionId, keyword, status="completed", message=None):
     """Notify the WebSocket Server"""
     try:
-        async with websockets.connect(WEBSOCKET_URL) as websocket:
-            await websocket.send(json.dumps({"message": message, "keyword": keyword}))
-            logger.info(f"Sent message: {message}")
-    except Exception as err:
-        logger.error(f"Error notifying websocket: {err}")
+        if message is None:
+            message = f"The crawling job for keyword '{keyword}' is {status}!"
+        response = requests.post(f"{NOTIFY_URL}/api/notify", json={"sessionId": sessionId, "message": message, "keyword": keyword})
+        response.raise_for_status()
+        logger.info(f"Sent message: {message} to sessionId: {sessionId}")
+    except requests.RequestException as err:
+        logger.error(f"Error notifying websocket server: {err}")
+
 
 async def process_message(message):
     """Process a single SQS message"""
     body = json.loads(message['Body'])
-    keyword = body['keyword']
+    keyword = body.get('keyword')
+    sessionId = body.get('sessionId')
+    logger.info(f"Processing keyword: {keyword} for sessionId: {sessionId}")
+
+    if not sessionId:
+        logger.error("Session ID is missing in the message.")
+        return False
+
     if not keyword_exists(keyword):
         try:
+            logger.info(f"Starting to fetch product info for keyword: {keyword}")
             await fetch_product_info(keyword)
             store_keyword(keyword)
             logger.info(f"Keyword {keyword} stored successfully.")
-            await notify_websocket(f"Crawling job for keyword '{keyword}' is completed!", keyword)
+            await notify_app(sessionId, keyword)
             return True
         except Exception as err:
             logger.error(f"Error processing keyword {keyword}: {err}")
+            await notify_app(sessionId, keyword, status="failed", message= f"Error processing keyword '{keyword}'")
             return False
     else:
         logger.info(f"Keyword {keyword} already exists in the database.")
+        await notify_app(sessionId, keyword, message=f"Keyword '{keyword}' already exists in the database." )
         return True
 
 async def process_sqs_messages():
     while True:
+        logger.info("Polling for messages...")
+
         response = sqs.receive_message(
             QueueUrl=AWS_SQS_QUEUE_URL,
             MaxNumberOfMessages=10,
@@ -63,6 +80,7 @@ async def process_sqs_messages():
         )
 
         messages = response.get('Messages', [])
+        logger.info(f"Received {len(messages)} messages from SQS queue.")
         for message in messages:
             success = await process_message(message)
             if success:

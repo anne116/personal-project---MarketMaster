@@ -21,11 +21,11 @@ sqs = boto3.client(
     aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
 )
 
-def add_crawl_task(keyword):
+def add_crawl_task(keyword, sessionId):
     """send message to SQS queue"""
     response = sqs.send_message(
         QueueUrl = aws_sqs_queue_url,
-        MessageBody = json.dumps({ 'keyword': keyword })
+        MessageBody = json.dumps({ 'keyword': keyword, 'sessionId': sessionId})
     )
     logger.info(f"Message sent to SQS queue for keyword: {keyword}")
     logger.info(f"SQS Response: {response}")

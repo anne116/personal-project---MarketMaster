@@ -2,14 +2,12 @@
 This module implements the FastAPI applcation with various endpoints
 for user authentication, product management, translation, title suggestion, and other features
 """
-import fasttext
 import spacy
-from spellchecker import SpellChecker
 import os
 import uuid
 from typing import Optional
 from datetime import datetime, timedelta
-from fastapi import FastAPI, HTTPException, Query, Depends, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, Depends, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -24,39 +22,63 @@ from tasks import add_crawl_task
 import logging
 import numpy as np
 import pandas as pd
+import json
+import re
+from difflib import get_close_matches
 
 app = FastAPI()
 load_dotenv()
 
 nlp = spacy.load('en_core_web_sm')
-fasttext_model = fasttext.load_model('models/cc.en.300.bin')
-spell = SpellChecker()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+WHITELIST = [ "women's clothing",'accessory','action figure','Air Fryer','air purifier','Amazon fire TV stick','ant killer','anti slip dog paw pads','Apple AirPods','Apple AirTag','bag','bed sheet','bicycle','board game','body lotion','camera','camping gear','car part',"children's book",'crocs','cushion foundation','disposable face towel','earring','educational toy','engagement gifts','External Hard Drive','fiction','Fitbit','fitness equipment','fitness tracker','flat back stud earrings','fly trap','furniture','grooming product','headphone','health supplement','home decor','hydrating serum for face','kitchen gadgets','laptop','laptops','lego','makeup','makeup remover wipes','mascara',"men's clothing",'microphone','microwave','monitor','Nintendo Switch','non-fiction','personalized cutting board','pet food','pet toy','pillow case','ping pong paddle','portable bluetooth speaker','printer','puzzle','refrigerator','skincare product','smartphone','smartphones','smartwatch','sports equipment','SSD','sun protection shirts','tablet','taiwanese oolong tea bags','tazo decaffeinated chai tea bags','tech golf polo','textbook','vacuum cleaner','washing machine','water shoes','Wireless Earbuds' ]
 
 def validate_keyword(keyword):
     """
     Validate the keyword against a list of known valid words using SpaCy and check if it's a meaningful word
     """
     logger.info(f"Validating keyword: {keyword}")
-    if not keyword.isalpha():
-        logger.warning(f"Keyword '{keyword}' is not valid word")
+    if keyword.lower() in [k.lower() for k in WHITELIST]:
+        logger.info(f"Keyword '{keyword}' is in the whitelist")
+        return True
+
+    if not re.match("^[a-zA-Z0-9' ]+$", keyword):
+        logger.warning(f"Keyword '{keyword}' is not valid")
         return False
+    
     return True
+
 
 def correct_typo(keyword):
     """
-    Correct typos in the keyword using pyspellchecker.
+    Correct typos in the keyword using a predefined vocabulary.
     """
+    if keyword.lower() in [k.lower() for k in WHITELIST]:
+        return keyword
+
     try:
-        corrected_keyword = spell.correction(keyword)
-        if corrected_keyword != keyword: 
-            logger.info(f"Corrected '{keyword}' to '{corrected_keyword}' ")
+        doc = nlp(keyword)
+        corrected_tokens = []
+
+        for token in doc:
+            matches = get_close_matches(token.text, [word.lower() for word in nlp.vocab.strings if word.isalpha()], n=1, cutoff=0.6)
+            if matches:
+                corrected_tokens.append(matches[0])
+            else:
+                corrected_tokens.append(token.text)
+
+        corrected_keyword = ' '.join(corrected_tokens)
+        if corrected_keyword != keyword.lower():
+            logger.info(f"Corrected '{keyword}' to '{corrected_keyword}'")
         return corrected_keyword
     except Exception as err:
         logger.error(f"Error in typo correction for keyword '{keyword}': {str(err)}")
     return keyword
+
+
 
 def normalize_keyword(keyword):
     """
@@ -86,7 +108,8 @@ async def validate_keyword_endpoint(keyword: str):
     if normalized_keyword:
         return {"valid": True, "normalized_keyword": normalized_keyword}
     else:
-        return {"valid": False}, 400
+        return JSONResponse(content={"valid": False}, status_code=400)
+
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"google-translate-key.json"
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
@@ -299,57 +322,113 @@ async def get_saved_lists(user_id: str = Depends(get_current_user)):
     return products if products else []
 
 @app.get("/api/fetch_products")
-async def fetch_products(keyword: str):
+async def fetch_products(keyword: str, sessionId: str):
     """Validate keyword first then fetch product information based on the keyword"""
-    normalized_keyword = normalize_keyword(keyword)
-    if not normalized_keyword:
-        raise HTTPException(status_code=400, detail="Invalid keyword. Please enter a meaningful search term.")
+    logger.info(f"Received keyword: {keyword}, sessionId: {sessionId}")
+    try:
+        normalized_keyword = normalize_keyword(keyword)
+        if not normalized_keyword:
+            return JSONResponse(status_code=400, content={"detail": "Invalid keyword. Please enter a meaningful search term."})
 
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
 
-    cursor.execute("SELECT keyword FROM normalized_keywords WHERE FIND_IN_SET(%s, keyword_pool)", (normalized_keyword,))
-    result = cursor.fetchone()
+        cursor.execute("SELECT keyword FROM normalized_keywords WHERE FIND_IN_SET(%s, keyword_pool)", (normalized_keyword,))
+        result = cursor.fetchone()
 
-    if result:
-        normalized_keyword = result['keyword']
-    else:
-        add_crawl_task(normalized_keyword)
-        logger.info(f"No products found for keyword '{normalized_keyword}', crawl task added")
-        raise HTTPException(
-            status_code=202, detail='Keyword not found. A crawl task has been added to the queue'
+        if result:
+            normalized_keyword = result['keyword']
+        else:
+            add_crawl_task(normalized_keyword, sessionId)
+            logger.info(f"No products found for keyword '{normalized_keyword}', crawl task added")
+            return JSONResponse(status_code=202, content={"detail": "Keyword not found. A crawl task has been added to the queue"})
+
+        cursor.execute(
+            """
+            SELECT id, mainImage_url, title, CONCAT(REPLACE(price_whole, '\n', ''), '.', LPAD(price_fraction, 2, '0')) AS price, rating, reviews, url
+            FROM products
+            WHERE keyword = %s
+            """,
+            (normalized_keyword,),
         )
+        products = cursor.fetchall()
+
+        if not products:
+            return JSONResponse(status_code=404, content={"detail": "No products found for the keyword"})
+
+        product_list = []
+        for product in products:
+            product_dict = {
+                "id": product['id'],
+                "main_Image": product['mainImage_url'],
+                "product_title": product['title'],
+                "price": product['price'],
+                "rating": product['rating'],
+                "reviews": product['reviews'],
+                "url": product['url'],
+            }
+            product_list.append(product_dict)
+        logger.info("Fetched products from DB: %s", product_list)
+        return JSONResponse(content=product_list)
+    except Exception as e:
+        logger.error(f"Error in fetch_products: {str(e)}")
+        return JSONResponse(status_code=500, content={"detail": "An error occurred while fetching products."})
+    finally:
+        cursor.close()
+        conn.close()
+
+# @app.get("/api/fetch_products")
+# async def fetch_products(keyword: str, sessionId: str):
+#     """Validate keyword first then fetch product information based on the keyword"""
+#     logger.info(f"Received keyword: {keyword}, sessionId: {sessionId}")
+#     normalized_keyword = normalize_keyword(keyword)
+#     if not normalized_keyword:
+#         raise JSONResponse(status_code=400, content={"Invalid keyword. Please enter a meaningful search term."})
+
+#     conn = get_db_connection()
+#     cursor = conn.cursor(dictionary=True)
+
+#     cursor.execute("SELECT keyword FROM normalized_keywords WHERE FIND_IN_SET(%s, keyword_pool)", (normalized_keyword,))
+#     result = cursor.fetchone()
+
+#     if result:
+#         normalized_keyword = result['keyword']
+#     else:
+#         add_crawl_task(normalized_keyword, sessionId)
+#         logger.info(f"No products found for keyword '{normalized_keyword}', crawl task added")
+#         return JSONResponse(status_code=202, content={"detail": "Keyword not found. A crawl task has been added to the queue"})
+
     
-    cursor.execute(
-        """
-        SELECT id, mainImage_url, title, CONCAT(REPLACE(price_whole, '\n', ''), '.', LPAD(price_fraction, 2, '0')) AS price, rating, reviews, url
-        FROM products
-        WHERE keyword = %s
-        """,
-        (normalized_keyword,),
-    )
-    products = cursor.fetchall()
+#     cursor.execute(
+#         """
+#         SELECT id, mainImage_url, title, CONCAT(REPLACE(price_whole, '\n', ''), '.', LPAD(price_fraction, 2, '0')) AS price, rating, reviews, url
+#         FROM products
+#         WHERE keyword = %s
+#         """,
+#         (normalized_keyword,),
+#     )
+#     products = cursor.fetchall()
 
-    cursor.close()
-    conn.close()
+#     cursor.close()
+#     conn.close()
 
-    if not products:
-        raise HTTPException(status_code=404, detail="no products found for the keyword")
+#     if not products:
+#         raise JSONResponse(status_code=404, content={"no products found for the keyword"})
 
-    product_list = []
-    for product in products:
-        product_dict = {
-            "id": product['id'],
-            "main_Image": product['mainImage_url'],
-            "product_title": product['title'],
-            "price": product['price'],
-            "rating": product['rating'],
-            "reviews": product['reviews'],
-            "url": product['url'],
-        }
-        product_list.append(product_dict)
-    print("Fetched products from DB:", product_list)
-    return JSONResponse(content=product_list)
+#     product_list = []
+#     for product in products:
+#         product_dict = {
+#             "id": product['id'],
+#             "main_Image": product['mainImage_url'],
+#             "product_title": product['title'],
+#             "price": product['price'],
+#             "rating": product['rating'],
+#             "reviews": product['reviews'],
+#             "url": product['url'],
+#         }
+#         product_list.append(product_dict)
+#     print("Fetched products from DB:", product_list)
+#     return JSONResponse(content=product_list)
 
 @app.get("/api/translate")
 async def translate_text(
@@ -455,30 +534,48 @@ async def get_suggested_title(keyword: str):
     except Exception as err:
         raise HTTPException(status_code=500, detail=str(err)) from err
 
-@app.websocket("/api/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    active_connections.append(websocket)
-    try:
-        logger.info(f"New connection: {websocket.client}")
-        while True:
-            try:
-                data = await websocket.receive_text()
-                logger.info(f"Received messages: {data}")
-                await notify_users(data)
-            except WebSocketDisconnect:
-                break
-    except Exception as err:
-        logger.error(f"WebSocket connection error: {err}")
-    finally:
-        active_connections.remove(websocket)
-        logger.info("WebSocket connection closed.")
 
-async def notify_users(message: str):
-    logger.info(f"Sending message to {len(active_connections)} connections")
-    for connection in active_connections:
-        await connection.send_text(message)
-        logger.info(f"Sent message to {connection.client}: {message}")
+connected_clients = {}
+
+@app.websocket("/api/ws/{sessionId}")
+async def websocket_endpoint(websocket: WebSocket, sessionId: str):
+    await websocket.accept()
+    if sessionId not in connected_clients:
+        connected_clients[sessionId] = []
+    connected_clients[sessionId].append(websocket)
+    try:
+        logger.info(f"New connection for sessionId: {sessionId}")
+        while True:
+            data = await websocket.receive_text()
+            logger.info(f"Received message from sessionId {sessionId}: {data}")
+    except WebSocketDisconnect:
+        connected_clients[sessionId].remove(websocket)
+        if not connected_clients[sessionId]:
+            del connected_clients[sessionId]
+        logger.info(f"WebSocket connection for sessionId {sessionId} closed.")
+
+@app.post("/api/notify")
+async def notify_users(request: Request):
+    data = await request.json()
+    logger.info(f"data: {data}")
+    sessionId = data.get('sessionId')
+    message = data.get('message')
+    keyword = data.get('keyword')
+    status = data.get('status', 'completed')  
+
+    if not sessionId or not message or not keyword:
+        raise HTTPException(status_code=422, detail="Missing required fields")
+    
+    custom_message = f"The crawling job for keyword '{keyword}' is {status}!"
+
+    if sessionId in connected_clients:
+        for websocket in connected_clients[sessionId]:
+            await websocket.send_text(json.dumps({"message": custom_message, "keyword": keyword}))
+            logger.info(f"Sent message to sessionId {sessionId}: {custom_message}")
+    else:
+        raise HTTPException(status_code=404, detail="Session ID not found")
+
+
 
 if __name__ == "__main__":
     import uvicorn

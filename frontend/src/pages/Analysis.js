@@ -284,8 +284,8 @@ const Analysis = () => {
     datasets: [
       {
         data: stats ? [stats.rating_distribution['1'], stats.rating_distribution['2'], stats.rating_distribution['3'], stats.rating_distribution['4'], stats.rating_distribution['5']] : [],
-        backgroundColor: [theme.colors.brand[100], theme.colors.brand[200], theme.colors.brand[300], theme.colors.brand[400], theme.colors.brand[500]],
-        borderColor: [theme.colors.brand[600], theme.colors.brand[700], theme.colors.brand[800], theme.colors.brand[900], theme.colors.brand[800]],
+        backgroundColor: [theme.colors.brand[50], theme.colors.brand[400], theme.colors.brand[350], theme.colors.brand[100], theme.colors.brand[550]],
+        borderColor: [theme.colors.brand[650], theme.colors.brand[700], theme.colors.brand[750], theme.colors.brand[850], theme.colors.brand[950]],
         borderWidth: 1,
       }
     ]

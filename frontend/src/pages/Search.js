@@ -35,7 +35,7 @@ const Search = () => {
   const [error, setError] = useState(null);
   const [fetching, setFetching] = useState(false);
   const [savedProducts, setSavedProducts] = useState([]);
-  const [ws, setWs] = useState(null);
+  const wsRef = useRef(null);
   const [notification, setNotification] = useState('');
   const [showAlert, setShowAlert] = useState(false);
 
@@ -76,13 +76,12 @@ const Search = () => {
     socket.onerror = (error) => {
       console.log('WebSocket error:', error);
     };
-    setWs(socket);
+    wsRef.current = socket;
   }, []);
 
   const fetchProducts = async (keyword) => {
     try {
       const sessionId = getSessionId();
-
       setFetching(true);
       console.log(`Fetching products for keyword: ${keyword}, sessionId: ${sessionId}`);
       const response = await fetch(
@@ -200,20 +199,19 @@ const Search = () => {
   );
 
   useEffect(() => {
+    console.log({search: location.search} )    
     console.log('useEffect triggered');
     const params = new URLSearchParams(location.search);
     const queryKeyword = params.get('keyword');
-    if (queryKeyword) {
-      setKeyword(queryKeyword);
-      debounceHandleSearch(queryKeyword, false);
-    }
-
+    // if (queryKeyword) {
+    //   setKeyword(queryKeyword);
+    //   debounceHandleSearch(queryKeyword, false);
+    // }
     const fetchSavedProducts = async() => {
       const token = localStorage.getItem('token');
       if (!token) {
         return;
       } 
-
       try {
         const response = await fetch('/api/get_savedLists', {
           headers: {
@@ -238,7 +236,6 @@ const Search = () => {
           setError(err.message);
         }
       }
-      
     };
 
     fetchSavedProducts();

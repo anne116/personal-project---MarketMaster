@@ -203,10 +203,10 @@ const Search = () => {
     console.log('useEffect triggered');
     const params = new URLSearchParams(location.search);
     const queryKeyword = params.get('keyword');
-    // if (queryKeyword) {
-    //   setKeyword(queryKeyword);
-    //   debounceHandleSearch(queryKeyword, false);
-    // }
+    if (queryKeyword) {
+      setKeyword(queryKeyword);
+      debounceHandleSearch(queryKeyword, false);
+    }
     const fetchSavedProducts = async() => {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -250,7 +250,7 @@ const Search = () => {
         wsRef.current.close();
       }
     };
-  }, [location.search, debounceHandleSearch, startWebSocket]);
+  }, []);
 
   const handleSearchClick = () => {
     debounceHandleSearch(keyword);

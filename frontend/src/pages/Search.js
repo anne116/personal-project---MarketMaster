@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Button,
   Input,
-  Select,
   Spinner,
   Text,
   Heading,
@@ -54,7 +53,7 @@ const Search = () => {
     return sessionId;
   };
 
-  const startWebSocket = (sessionId) => {
+  const startWebSocket = useCallback((sessionId) => {
     const webSocketUrl = process.env.REACT_APP_WEBSOCKET_URL || `wss://${window.location.host}`;
     const socket = new WebSocket(`${webSocketUrl}/api/ws/${sessionId}`);
 
@@ -78,7 +77,7 @@ const Search = () => {
       console.log('WebSocket error:', error);
     };
     setWs(socket);
-  };
+  }, []);
 
   const fetchProducts = async (keyword) => {
     try {
@@ -98,13 +97,13 @@ const Search = () => {
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         const responseText = await response.text();
-        console.error('Unexpected response format:', responseText); // Log the entire response for debugging
+        console.error('Unexpected response format:', responseText); 
         throw new Error(`Unexpected response format: ${responseText}`);
       }
   
       if (!response.ok) {
         const responseText = await response.text();
-        console.error('Error response:', responseText); // Log the entire response for debugging
+        console.error('Error response:', responseText); 
         throw new Error(`Error: ${response.status} ${response.statusText}`);
       }
       
@@ -190,7 +189,7 @@ const Search = () => {
     } finally {
       setFetching(false);
     }
-  }, [displayLanguage, navigate, toast]);
+  }, [displayLanguage, navigate, toast, startWebSocket]);
 
   const debounceHandleSearch = useCallback(
     debounce((searchKeyword, updateUrl = true) => {
@@ -236,7 +235,7 @@ const Search = () => {
         if (err.message === 'You Have Not Saved Anything Yet!') {
           setError(err.message);
         } else {
-        setError(err.message);
+          setError(err.message);
         }
       }
       
@@ -244,13 +243,17 @@ const Search = () => {
 
     fetchSavedProducts();
 
-    const sessionId = localStorage.getItem('sessionId');
-    const searchKeyword = localStorage.getItem('searchKeyword');
-    if (sessionId && searchKeyword) {
+    const sessionId = getSessionId();
+    if (!wsRef.current) {
       startWebSocket(sessionId);
     }
 
-  }, [location.search, debounceHandleSearch]);
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [location.search, debounceHandleSearch, startWebSocket]);
 
   const handleSearchClick = () => {
     debounceHandleSearch(keyword);

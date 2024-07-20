@@ -480,16 +480,40 @@ async def get_suggested_title(keyword: str):
         return suggested_title
     except Exception as err:
         raise HTTPException(status_code=500, detail=str(err)) from err
+    
+class NotificationRequest(BaseModel):
+    sessionId: str
+    message: str
+    keyword: str
+
+@app.post("/api/notify")
+async def notify(notification: NotificationRequest):
+    sessionId = notification.sessionId
+    message = notification.message
+    if sessionId in connected_clients:
+        logger.info(f"Notifying sessionId: {sessionId} with message: {message}")
+        for websocket in connected_clients[sessionId]:
+            await websocket.send_text(json.dumps({"message": message, "keyword": notification.keyword}))
+        return {"status": "success", "message": "Notification sent."}
+    else:
+        logger.info(f"No connected clients found for sessionId: {sessionId}")
+        return {"status": "error", "message": "No connected clients found."}
+
 
 connected_clients = {}
-
 @app.websocket("/api/ws/{sessionId}")
 async def websocket_endpoint(websocket: WebSocket, sessionId: str):
+    logger.info(f"check1: {connected_clients}")
     await websocket.accept()
+    logger.info(f"check2: {connected_clients}")
     if sessionId not in connected_clients:
         connected_clients[sessionId] = []
+    logger.info(f"check3: {connected_clients}")
     if websocket not in connected_clients[sessionId]:
+        logger.info(f"check websocket: {websocket}")
         connected_clients[sessionId].append(websocket)
+        logger.info(f"check4: {connected_clients}")
+        logger.info(f"check5: {connected_clients[sessionId]}")
     try:
         logger.info(f"New connection for sessionId: {sessionId}")
         while True:

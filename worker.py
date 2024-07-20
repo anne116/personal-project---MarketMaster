@@ -9,10 +9,10 @@ import asyncio
 import websockets
 from utils import keyword_exists, store_keyword
 from crawl_amazon_product_data import fetch_product_info
-from app import connected_clients
 from dotenv import load_dotenv
 import logging
 import requests
+
 
 load_dotenv()
 NOTIFY_URL = os.getenv('NOTIFY_URL')
@@ -30,24 +30,16 @@ sqs = boto3.client(
     aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY')
 )
 
-async def notify_user(sessionId, keyword, status, message):
-    """Notify the backend server and optionally the user's browser"""
-    payload = {
-        "sessionId": sessionId,
-        "keyword": keyword,
-        "status": status,
-        "message": message
-    }
-
-    logger.info(f"payload: {payload}")
-
-    custom_message = f"The crawling job for keyword '{keyword}' is {status}!"
-    if sessionId in connected_clients:
-        for websocket in connected_clients[sessionId]:
-            await websocket.send_text(json.dumps({"message": custom_message}))
-            logger.info(f"Sent message to session {sessionId}: {custom_message}")
-    else:
-        logger.info(f"No connected clients found for session {sessionId}")
+async def notify_app(sessionId, keyword, status="completed", message=None):
+    """Notify the WebSocket Server"""
+    try:
+        if message is None:
+            message = f"The crawling job for keyword '{keyword}' is {status}!"
+        response = requests.post(f"{NOTIFY_URL}/api/notify", json={"sessionId": sessionId, "message": message, "keyword": keyword})
+        response.raise_for_status()
+        logger.info(f"Sent message: {message} to sessionId: {sessionId}")
+    except requests.RequestException as err:
+        logger.error(f"Error notifying websocket server: {err}")
 
 async def process_message(message):
     """Process a single SQS message"""
@@ -68,21 +60,26 @@ async def process_message(message):
                 store_keyword(keyword)
                 logger.info(f"Keyword {keyword} stored successfully.")
                 message = f"The crawling job for keyword '{keyword}' is completed successfully."
-                await notify_user(sessionId, keyword, status="completed", message=message)
+                await notify_app(sessionId, keyword, status="completed", message=message)
                 logger.info(f"Job crawling keyword:{keyword} completed. User is informed.")
                 return True
             else:
                 message = f"Failed to fetch sufficient product info for keyword '{keyword}'."
-                await notify_user(sessionId, keyword, status="failed", message=message)
+                await notify_app(sessionId, keyword, status="failed", message=message)
                 logger.info(f"Job crawling keyword:{keyword} failed. User is informed.")
                 return False
         except Exception as err:
-            logger.error(f"Error processing keyword {keyword}: {err}")
+            if total_crawled_items >= 80:
+                store_keyword(keyword)
+                message = f"The crawling job for keyword '{keyword}' is completed with error: {err}"
+                await notify_app(sessionId, keyword, status="completed_with_errors", message=message)
+                logger.error(f"Error processing keyword {keyword}: {err}")
+                return True  # Consider it as processed successfully to delete the message from the queue
             return False
     else:
         logger.info(f"Keyword {keyword} already exists in the database.")
         message = f"Keyword '{keyword}' already exists in the database."
-        await notify_user(sessionId, keyword, status="exists", message=message)
+        await notify_app(sessionId, keyword, status="exists", message=message)
         return True
 
 async def process_sqs_messages():

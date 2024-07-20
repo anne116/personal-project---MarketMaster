@@ -125,26 +125,30 @@ async def process_item(item, context, keyword, batch_products):
     details = await extract_product_details(item)
     if is_valid_product(details):
         title, url, price_whole, price_fraction, rating, reviews = details
-        main_image_url, other_image_urls = await extract_product_images(
-            context, url
-        )
-        if main_image_url is not None:
-            other_images_url_str = ",".join(other_image_urls)
-            product_data = {
-                "title": title,
-                "price_whole": price_whole,
-                "price_fraction": price_fraction,
-                "rating": rating,
-                "reviews": reviews,
-                "keyword": keyword,
-                "url": url,
-                "mainImage_url": main_image_url,
-                "otherImages_url": other_images_url_str,
-            }
-            print(f"Extracted product data: {product_data}")
-            batch_products.append(product_data)
-        else:
-            print(f"SKIPPING product at {url} due to missing main image.")
+        try:
+            main_image_url, other_image_urls = await extract_product_images(context, url)
+            if main_image_url is not None:
+                other_images_url_str = ",".join(other_image_urls)
+                product_data = {
+                    "title": title,
+                    "price_whole": price_whole,
+                    "price_fraction": price_fraction,
+                    "rating": rating,
+                    "reviews": reviews,
+                    "keyword": keyword,
+                    "url": url,
+                    "mainImage_url": main_image_url,
+                    "otherImages_url": other_images_url_str,
+                }
+                print(f"Extracted product data: {product_data}")
+                batch_products.append(product_data)
+            else:
+                print(f"skipping product at {url} due to missing main image.")
+        except TimeoutError:
+            print(f"Timeout waiting for the main image on {url}. Skipping this product.")
+    else:
+        print(f"Invalid product details for item: {details}")
+
 
 
 async def crawl_page(page, context, keyword: str, batch_size=2):

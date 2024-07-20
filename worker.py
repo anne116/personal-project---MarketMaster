@@ -42,13 +42,12 @@ async def notify_user(sessionId, keyword, status, message):
     logger.info(f"payload: {payload}")
 
     custom_message = f"The crawling job for keyword '{keyword}' is {status}!"
-    if status =="completed":
-        if sessionId in connected_clients:
-            for websocket in connected_clients[sessionId]:
-                await websocket.send_text(json.dumps({"message": custom_message}))
-                logger.info(f"payload: {payload}")
-
-
+    if sessionId in connected_clients:
+        for websocket in connected_clients[sessionId]:
+            await websocket.send_text(json.dumps({"message": custom_message}))
+            logger.info(f"Sent message to session {sessionId}: {custom_message}")
+    else:
+        logger.info(f"No connected clients found for session {sessionId}")
 
 async def process_message(message):
     """Process a single SQS message"""

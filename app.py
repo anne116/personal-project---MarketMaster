@@ -377,59 +377,6 @@ async def fetch_products(keyword: str, sessionId: str):
         cursor.close()
         conn.close()
 
-# @app.get("/api/fetch_products")
-# async def fetch_products(keyword: str, sessionId: str):
-#     """Validate keyword first then fetch product information based on the keyword"""
-#     logger.info(f"Received keyword: {keyword}, sessionId: {sessionId}")
-#     normalized_keyword = normalize_keyword(keyword)
-#     if not normalized_keyword:
-#         raise JSONResponse(status_code=400, content={"Invalid keyword. Please enter a meaningful search term."})
-
-#     conn = get_db_connection()
-#     cursor = conn.cursor(dictionary=True)
-
-#     cursor.execute("SELECT keyword FROM normalized_keywords WHERE FIND_IN_SET(%s, keyword_pool)", (normalized_keyword,))
-#     result = cursor.fetchone()
-
-#     if result:
-#         normalized_keyword = result['keyword']
-#     else:
-#         add_crawl_task(normalized_keyword, sessionId)
-#         logger.info(f"No products found for keyword '{normalized_keyword}', crawl task added")
-#         return JSONResponse(status_code=202, content={"detail": "Keyword not found. A crawl task has been added to the queue"})
-
-    
-#     cursor.execute(
-#         """
-#         SELECT id, mainImage_url, title, CONCAT(REPLACE(price_whole, '\n', ''), '.', LPAD(price_fraction, 2, '0')) AS price, rating, reviews, url
-#         FROM products
-#         WHERE keyword = %s
-#         """,
-#         (normalized_keyword,),
-#     )
-#     products = cursor.fetchall()
-
-#     cursor.close()
-#     conn.close()
-
-#     if not products:
-#         raise JSONResponse(status_code=404, content={"no products found for the keyword"})
-
-#     product_list = []
-#     for product in products:
-#         product_dict = {
-#             "id": product['id'],
-#             "main_Image": product['mainImage_url'],
-#             "product_title": product['title'],
-#             "price": product['price'],
-#             "rating": product['rating'],
-#             "reviews": product['reviews'],
-#             "url": product['url'],
-#         }
-#         product_list.append(product_dict)
-#     print("Fetched products from DB:", product_list)
-#     return JSONResponse(content=product_list)
-
 @app.get("/api/translate")
 async def translate_text(
     text: str = Query(..., description="Text to translate"),
@@ -534,7 +481,6 @@ async def get_suggested_title(keyword: str):
     except Exception as err:
         raise HTTPException(status_code=500, detail=str(err)) from err
 
-
 connected_clients = {}
 
 @app.websocket("/api/ws/{sessionId}")
@@ -542,7 +488,8 @@ async def websocket_endpoint(websocket: WebSocket, sessionId: str):
     await websocket.accept()
     if sessionId not in connected_clients:
         connected_clients[sessionId] = []
-    connected_clients[sessionId].append(websocket)
+    if websocket not in connected_clients[sessionId]:
+        connected_clients[sessionId].append(websocket)
     try:
         logger.info(f"New connection for sessionId: {sessionId}")
         while True:
@@ -553,29 +500,6 @@ async def websocket_endpoint(websocket: WebSocket, sessionId: str):
         if not connected_clients[sessionId]:
             del connected_clients[sessionId]
         logger.info(f"WebSocket connection for sessionId {sessionId} closed.")
-
-@app.post("/api/notify")
-async def notify_users(request: Request):
-    data = await request.json()
-    logger.info(f"data: {data}")
-    sessionId = data.get('sessionId')
-    message = data.get('message')
-    keyword = data.get('keyword')
-    status = data.get('status', 'completed')  
-
-    if not sessionId or not message or not keyword:
-        raise HTTPException(status_code=422, detail="Missing required fields")
-    
-    custom_message = f"The crawling job for keyword '{keyword}' is {status}!"
-
-    if sessionId in connected_clients:
-        for websocket in connected_clients[sessionId]:
-            await websocket.send_text(json.dumps({"message": custom_message, "keyword": keyword}))
-            logger.info(f"Sent message to sessionId {sessionId}: {custom_message}")
-    else:
-        raise HTTPException(status_code=404, detail="Session ID not found")
-
-
 
 if __name__ == "__main__":
     import uvicorn

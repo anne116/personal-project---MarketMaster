@@ -9,6 +9,7 @@ import asyncio
 import websockets
 from utils import keyword_exists, store_keyword
 from crawl_amazon_product_data import fetch_product_info
+from app import connected_clients
 from dotenv import load_dotenv
 import logging
 import requests
@@ -29,16 +30,24 @@ sqs = boto3.client(
     aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY')
 )
 
-async def notify_app(sessionId, keyword, status="completed", message=None):
-    """Notify the WebSocket Server"""
-    try:
-        if message is None:
-            message = f"The crawling job for keyword '{keyword}' is {status}!"
-        response = requests.post(f"{NOTIFY_URL}/api/notify", json={"sessionId": sessionId, "message": message, "keyword": keyword})
-        response.raise_for_status()
-        logger.info(f"Sent message: {message} to sessionId: {sessionId}")
-    except requests.RequestException as err:
-        logger.error(f"Error notifying websocket server: {err}")
+async def notify_user(sessionId, keyword, status, message):
+    """Notify the backend server and optionally the user's browser"""
+    payload = {
+        "sessionId": sessionId,
+        "keyword": keyword,
+        "status": status,
+        "message": message
+    }
+
+    logger.info(f"payload: {payload}")
+
+    custom_message = f"The crawling job for keyword '{keyword}' is {status}!"
+    if status =="completed":
+        if sessionId in connected_clients:
+            for websocket in connected_clients[sessionId]:
+                await websocket.send_text(json.dumps({"message": custom_message}))
+                logger.info(f"payload: {payload}")
+
 
 
 async def process_message(message):
@@ -53,20 +62,28 @@ async def process_message(message):
         return False
 
     if not keyword_exists(keyword):
+        logger.info(f"Starting to fetch product info for keyword: {keyword}")
         try:
-            logger.info(f"Starting to fetch product info for keyword: {keyword}")
-            await fetch_product_info(keyword)
-            store_keyword(keyword)
-            logger.info(f"Keyword {keyword} stored successfully.")
-            await notify_app(sessionId, keyword)
-            return True
+            total_crawled_items = await fetch_product_info(keyword, min_items_to_store=80)
+            if total_crawled_items >= 80:
+                store_keyword(keyword)
+                logger.info(f"Keyword {keyword} stored successfully.")
+                message = f"The crawling job for keyword '{keyword}' is completed successfully."
+                await notify_user(sessionId, keyword, status="completed", message=message)
+                logger.info(f"Job crawling keyword:{keyword} completed. User is informed.")
+                return True
+            else:
+                message = f"Failed to fetch sufficient product info for keyword '{keyword}'."
+                await notify_user(sessionId, keyword, status="failed", message=message)
+                logger.info(f"Job crawling keyword:{keyword} failed. User is informed.")
+                return False
         except Exception as err:
             logger.error(f"Error processing keyword {keyword}: {err}")
-            await notify_app(sessionId, keyword, status="failed", message= f"Error processing keyword '{keyword}'")
             return False
     else:
         logger.info(f"Keyword {keyword} already exists in the database.")
-        await notify_app(sessionId, keyword, message=f"Keyword '{keyword}' already exists in the database." )
+        message = f"Keyword '{keyword}' already exists in the database."
+        await notify_user(sessionId, keyword, status="exists", message=message)
         return True
 
 async def process_sqs_messages():
@@ -83,7 +100,7 @@ async def process_sqs_messages():
         logger.info(f"Received {len(messages)} messages from SQS queue.")
         for message in messages:
             success = await process_message(message)
-            if success:
+            if success or "Keyword already exists" in message['Body']:
                 sqs.delete_message(
                     QueueUrl=AWS_SQS_QUEUE_URL,
                     ReceiptHandle=message['ReceiptHandle']

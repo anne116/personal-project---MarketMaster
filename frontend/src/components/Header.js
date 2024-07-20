@@ -15,31 +15,24 @@ const Header = () => {
     const connectWebSocket = () => {
       const sessionId = localStorage.getItem('sessionId');
       if (!sessionId) {
-        console.log('There is no session id currently.');
         return;
       }
       const webSocketUrl = process.env.REACT_APP_WEBSOCKET_URL || `wss://${window.location.host}`;
       const socket = new WebSocket(`${webSocketUrl}/api/ws/${sessionId}`);
 
       socket.onopen =() => {
-        console.log('WebSocket is connected');
       };
       socket.onmessage = (event) => {
-        console.log('Notification received:', event.data);
         const data = JSON.parse(event.data);
-        console.log('Parsed data:', data)
         setNotifications((prev) => [...prev, data]);
         setNewNotifications((prev) => prev + 1);
       };
       socket.onclose = (event) => {
-        console.log('Websocket connection closed.', event);
         setTimeout( () => {
-          console.log('Reconnecting WebSocket...');
           connectWebSocket();
         },5000);
       };
       socket.onerror = (error) => {
-        console.log('Websocket error:', error);
       };
       setWs(socket);
       return socket;

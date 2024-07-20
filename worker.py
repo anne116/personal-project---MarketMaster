@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 import logging
 import requests
 
+
 load_dotenv()
 NOTIFY_URL = os.getenv('NOTIFY_URL')
 
@@ -40,7 +41,6 @@ async def notify_app(sessionId, keyword, status="completed", message=None):
     except requests.RequestException as err:
         logger.error(f"Error notifying websocket server: {err}")
 
-
 async def process_message(message):
     """Process a single SQS message"""
     body = json.loads(message['Body'])
@@ -53,20 +53,33 @@ async def process_message(message):
         return False
 
     if not keyword_exists(keyword):
+        logger.info(f"Starting to fetch product info for keyword: {keyword}")
         try:
-            logger.info(f"Starting to fetch product info for keyword: {keyword}")
-            await fetch_product_info(keyword)
-            store_keyword(keyword)
-            logger.info(f"Keyword {keyword} stored successfully.")
-            await notify_app(sessionId, keyword)
-            return True
+            total_crawled_items = await fetch_product_info(keyword, min_items_to_store=80)
+            if total_crawled_items >= 80:
+                store_keyword(keyword)
+                logger.info(f"Keyword {keyword} stored successfully.")
+                message = f"The crawling job for keyword '{keyword}' is completed successfully."
+                await notify_app(sessionId, keyword, status="completed", message=message)
+                logger.info(f"Job crawling keyword:{keyword} completed. User is informed.")
+                return True
+            else:
+                message = f"Failed to fetch sufficient product info for keyword '{keyword}'."
+                await notify_app(sessionId, keyword, status="failed", message=message)
+                logger.info(f"Job crawling keyword:{keyword} failed. User is informed.")
+                return False
         except Exception as err:
-            logger.error(f"Error processing keyword {keyword}: {err}")
-            await notify_app(sessionId, keyword, status="failed", message= f"Error processing keyword '{keyword}'")
+            if total_crawled_items >= 80:
+                store_keyword(keyword)
+                message = f"The crawling job for keyword '{keyword}' is completed with error: {err}"
+                await notify_app(sessionId, keyword, status="completed_with_errors", message=message)
+                logger.error(f"Error processing keyword {keyword}: {err}")
+                return True  # Consider it as processed successfully to delete the message from the queue
             return False
     else:
         logger.info(f"Keyword {keyword} already exists in the database.")
-        await notify_app(sessionId, keyword, message=f"Keyword '{keyword}' already exists in the database." )
+        message = f"Keyword '{keyword}' already exists in the database."
+        await notify_app(sessionId, keyword, status="exists", message=message)
         return True
 
 async def process_sqs_messages():
@@ -83,7 +96,7 @@ async def process_sqs_messages():
         logger.info(f"Received {len(messages)} messages from SQS queue.")
         for message in messages:
             success = await process_message(message)
-            if success:
+            if success or "Keyword already exists" in message['Body']:
                 sqs.delete_message(
                     QueueUrl=AWS_SQS_QUEUE_URL,
                     ReceiptHandle=message['ReceiptHandle']

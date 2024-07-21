@@ -1,0 +1,7 @@
+playwright
+python-dotenv
+mysql-connector-python
+boto3
+asyncio
+websockets
+requests

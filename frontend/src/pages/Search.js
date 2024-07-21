@@ -27,7 +27,7 @@ import {
   FaStarHalfAlt,
   FaRegStar,
 } from "react-icons/fa";
-import { useSavedList } from "../Index";
+import { useSavedList } from "../index";
 import { debounce } from "lodash";
 import { v4 as uuidv4 } from "uuid";
 

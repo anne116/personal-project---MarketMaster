@@ -1,36 +1,44 @@
-# Use an official python runtime as a parent image
-FROM python:3.9-slim AS base
+FROM python:3.9-slim
 
-# Install xvfb and other dependencies
+# Upgrade pip to the latest version
+RUN pip install --upgrade pip
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libglib2.0-0 \
+    libnss3 \
+    libnspr4 \
+    libdbus-1-3 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libatspi2.0-0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libgbm1 \
+    libxkbcommon0 \
+    libpango-1.0-0 \
+    libcairo2 \
+    libasound2 \
+    --no-install-recommends \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install xvfb
 RUN apt-get update && apt-get install -y xvfb
 
-# Set the working directory
+# Install Python dependencies
+COPY requirement_worker.txt .
+RUN pip install --no-cache-dir -r requirement_worker.txt
+
+# Copy the application code
+COPY . /app
 WORKDIR /app
 
-# Copy requirement.txt before other files and install dependencies
-COPY requirement.txt .
+# Install Playwright and its dependencies
+RUN pip install playwright
+RUN playwright install-deps
+RUN playwright install
 
-# Install any needed packages specified in the requirement.txt
-RUN pip install --no-cache-dir -r requirement.txt
-
-# Copy the current directory contents into the container at /app
-COPY . .
-
-# Final stage: Minimal runtime image
-FROM base AS runtime
-
-# Set the environment variable for Playwright browsers path
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-
-# Install Playwright and browsers
-RUN python -m playwright install
-
-# Ensure Playwright browsers are available in the final image
-RUN mkdir -p /root/.cache/ms-playwright
-
-# Set the working directory
-WORKDIR /app
-
-# Run worker.py when the container launches using xvfb-run
+# Start the worker process
 CMD ["xvfb-run", "-a", "python", "worker.py"]
-

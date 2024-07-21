@@ -40,5 +40,11 @@ RUN pip install playwright
 RUN playwright install-deps
 RUN playwright install
 
+# Ensure Playwright browsers are available in the final image
+RUN mkdir -p /root/.cache/ms-playwright
+
+# Set the environment variable for Playwright browsers path
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
 # Start the worker process
-CMD ["xvfb-run", "-a", "python", "worker.py"]
+CMD ["xvfb-run", "-a", "python", "/backend/tasks/worker.py"]

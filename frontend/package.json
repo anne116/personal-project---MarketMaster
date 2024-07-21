@@ -1,7 +1,7 @@
 {
   "name": "jsclonefrontend",
   "version": "1.0.0",
-  "main": "Index.js",
+  "main": "index.js",
   "private": true,
   "dependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",

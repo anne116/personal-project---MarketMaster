@@ -12,7 +12,7 @@ import {
   useToast,
   IconButton,
 } from "@chakra-ui/react";
-import { useSavedList } from "../Index";
+import { useSavedList } from "../index";
 import { FaTrash } from "react-icons/fa";
 
 const SavedList = () => {

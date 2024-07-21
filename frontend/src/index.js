@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { ChakraProvider } from "@chakra-ui/react";
-import Theme from "./Theme";
+import Theme from "./theme";
 import PropTypes from "prop-types";
 
 const SavedListContext = createContext();

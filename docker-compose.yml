@@ -24,13 +24,14 @@ services:
       - AWS_S3_SECRET_ACCESS_KEY=${AWS_S3_SECRET_ACCESS_KEY}
     volumes:
       - ./google-translate-key.json:/app/google-translate-key.json
+    restart: always
 
   worker:
     build:
         context: .
         dockerfile: Dockerfile.worker
     container_name: worker
-    command: xvfb-run -a python worker.py
+    command: xvfb-run -a python /backend/tasks/worker.py
     environment:
       - MYSQL_HOST=${MYSQL_HOST}
       - MYSQL_USER=${MYSQL_USER}
@@ -43,3 +44,4 @@ services:
       - WEBSOCKET_URL=${WEBSOCKET_URL}
     depends_on:
       - web
+    restart: always

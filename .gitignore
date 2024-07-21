@@ -6,3 +6,5 @@ __pycache__/
 .pkg
 google-translate-key.json
 myenv/
+.ico
+.png

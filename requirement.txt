@@ -7,8 +7,10 @@ google-cloud-translate
 openai
 passlib
 python-jose
-boto3
 asyncio
 websockets
 pandas
 numpy
+spacy
+boto3
+requests

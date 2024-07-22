@@ -328,6 +328,8 @@ async def signup(signup_request: SignUpRequest):
             data={"sub": user_id}, expires_delta=access_token_expires
         )
     except mysql.connector.Error as err:
+        if err.errno == 1062:  # Duplicate entry error code
+            raise HTTPException(status_code=400, detail="This email already exists!") from err
         raise HTTPException(status_code=400, detail=str(err)) from err
     finally:
         cursor.close()
@@ -468,6 +470,9 @@ async def get_saved_lists(user_id: str = Depends(get_current_user)):
 async def fetch_products(keyword: str, sessionId: str):
     """Validate keyword first then fetch product information based on the keyword"""
     logger.info("Received keyword: %s, sessionId: %s", keyword, sessionId)
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
     try:
         normalized_keyword = normalize_keyword(keyword)
         if not normalized_keyword:
@@ -477,9 +482,6 @@ async def fetch_products(keyword: str, sessionId: str):
                     "detail": "Invalid keyword. Please enter a meaningful search term."
                 },
             )
-
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
 
         cursor.execute(
             "SELECT keyword FROM normalized_keywords WHERE FIND_IN_SET(%s, keyword_pool)",

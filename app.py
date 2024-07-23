@@ -134,6 +134,22 @@ def validate_keyword(keyword):
     if not re.match("^[a-zA-Z0-9' ]+$", keyword):
         logger.warning("Keyword '%s' is not valid", keyword)
         return False
+    
+    # Check the ratio of vowels to consonants to identify random letters
+    vowels = set("aeiouAEIOU")
+    num_vowels = sum(1 for char in keyword if char in vowels)
+    num_consonants = len([char for char in keyword if char.isalpha() and char not in vowels])
+    
+    if num_vowels == 0:  # Avoid division by zero
+        return False
+
+    ratio = num_consonants / num_vowels
+    logger.info("Consonant to vowel ratio for '%s' is %f", keyword, ratio)
+    
+    if ratio > 3:
+        logger.warning("Keyword '%s' appears to be random letters", keyword)
+        return False
+
 
     return True
 
@@ -184,6 +200,8 @@ def normalize_keyword(keyword):
     lemmatizing, and handling typos using word embeddings.
     """
     try:
+        if not keyword.strip():  # 如果keyword是空字符串或只包含空格，返回None
+            return None
         logger.info("Original keyword: %s", keyword)
         keyword = keyword.lower()
         keyword = " ".join(keyword.split())
@@ -310,6 +328,8 @@ async def signup(signup_request: SignUpRequest):
             data={"sub": user_id}, expires_delta=access_token_expires
         )
     except mysql.connector.Error as err:
+        if err.errno == 1062:  # Duplicate entry error code
+            raise HTTPException(status_code=400, detail="This email already exists!") from err
         raise HTTPException(status_code=400, detail=str(err)) from err
     finally:
         cursor.close()
@@ -450,6 +470,9 @@ async def get_saved_lists(user_id: str = Depends(get_current_user)):
 async def fetch_products(keyword: str, sessionId: str):
     """Validate keyword first then fetch product information based on the keyword"""
     logger.info("Received keyword: %s, sessionId: %s", keyword, sessionId)
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
     try:
         normalized_keyword = normalize_keyword(keyword)
         if not normalized_keyword:
@@ -459,9 +482,6 @@ async def fetch_products(keyword: str, sessionId: str):
                     "detail": "Invalid keyword. Please enter a meaningful search term."
                 },
             )
-
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
 
         cursor.execute(
             "SELECT keyword FROM normalized_keywords WHERE FIND_IN_SET(%s, keyword_pool)",
@@ -688,17 +708,11 @@ async def websocket_endpoint(websocket: WebSocket, sessionId: str):
     Handle WebSocket connections for a given sessionId. Manage connection lifecycle and
     store connected clients in the global 'connected_clients' dictionary.
     """
-    logger.info("check1: %s", connected_clients)
     await websocket.accept()
-    logger.info("check2: %s", connected_clients)
     if sessionId not in connected_clients:
         connected_clients[sessionId] = []
-    logger.info("check3: %s", connected_clients)
     if websocket not in connected_clients[sessionId]:
-        logger.info("check websocket: %s", websocket)
         connected_clients[sessionId].append(websocket)
-        logger.info("check4: %s", connected_clients)
-        logger.info("check5: %s", connected_clients[sessionId])
     try:
         logger.info("New connection for sessionId: %s", sessionId)
         while True:

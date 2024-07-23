@@ -75,7 +75,7 @@ async def process_message(message):
                 )
                 return True
             message = (
-                f"Failed to fetch sufficient product info for keyword '{keyword}'."
+                f"Failed to fetch sufficient product info for keyword '{keyword}'. Please try a valid keyword"
             )
             await notify_app(sessionId, keyword, status="failed", message=message)
             logger.info("Job crawling keyword:%s failed. User is informed.", keyword)
@@ -84,10 +84,8 @@ async def process_message(message):
             if total_crawled_items >= 80:
                 store_keyword(keyword)
                 message = f"The crawling job for keyword '{keyword}' is completed with error: {err}"
-                await notify_app(
-                    sessionId, keyword, status="completed_with_errors", message=message
-                )
-                logger.error("Error processing keyword %s: %s", keyword, err)
+                await notify_app(sessionId, keyword, status="completed_with_errors", message=message)
+                logger.error(f"Error processing keyword {keyword}: {err}")
                 return True
             return False
     else:

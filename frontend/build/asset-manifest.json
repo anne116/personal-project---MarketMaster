@@ -1,6 +1,6 @@
 {
   "files": {
-    "main.js": "/static/js/main.006945a2.js",
+    "main.js": "/static/js/main.d3d9fee4.js",
     "static/media/HeroImage.webp": "/static/media/HeroImage.bde5eeddaa6097887c79.webp",
     "static/media/MarketMasterLogo.png": "/static/media/MarketMasterLogo.003849d736cdc89115b8.png",
     "static/media/worriedImage1.jpg": "/static/media/worriedImage1.1dce89bd65e29842a8f2.jpg",
@@ -8,9 +8,9 @@
     "static/media/worriedImage4.jpg": "/static/media/worriedImage4.4f7528ffc2e5a0eaaec5.jpg",
     "static/media/worriedImage3.jpg": "/static/media/worriedImage3.a888d2b11032a1d1e2e2.jpg",
     "index.html": "/index.html",
-    "main.006945a2.js.map": "/static/js/main.006945a2.js.map"
+    "main.d3d9fee4.js.map": "/static/js/main.d3d9fee4.js.map"
   },
   "entrypoints": [
-    "static/js/main.006945a2.js"
+    "static/js/main.d3d9fee4.js"
   ]
 }

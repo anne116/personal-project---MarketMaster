@@ -42,6 +42,7 @@ const Search = () => {
   const wsRef = useRef(null);
   const [notification, setNotification] = useState("");
   const [showAlert, setShowAlert] = useState(false);
+  const [crawlingInProgress, setCrawlingInProgress] = useState(false);
 
   const { saveProduct } = useSavedList();
   const navigate = useNavigate();
@@ -99,6 +100,7 @@ const Search = () => {
       }
 
       const data = await response.json();
+      setCrawlingInProgress(false);
       return { products: data, new_crawl: false };
     } catch (err) {
       setError(err.message);
@@ -165,9 +167,10 @@ const Search = () => {
           localStorage.setItem("keywords", JSON.stringify(keywords));
           startWebSocket(sessionId);
           setNotification(
-            "Your input is received! We are currently processing your request. You will be notified via the bell icon in the top right corner once the process is complete.",
+            "Your input is received! We are currently processing your request. You will be notified upon completion.",
           );
           setShowAlert(true);
+          setCrawlingInProgress(true); 
         }
       } catch (err) {
         setError(err.message);
@@ -249,7 +252,7 @@ const Search = () => {
   };
 
   const handleAnalysisClick = () => {
-    navigate("/analysis", { state: { keyword: translatedText } });
+    navigate("/analysis", { state: { keyword: translatedText, crawlingInProgress } });
   };
 
   const handleSaveProduct = async (product) => {
@@ -360,22 +363,6 @@ const Search = () => {
               _hover={{ borderColor: "gray.600" }}
               focusBorderColor="blue.500"
             />
-
-            {/* <Select
-              value={displayLanguage}
-              onChange={(e) => setDisplayLanguage(e.target.value)}
-              size='lg'
-              borderColor='gray.400'
-              _hover={{ borderColor: 'gray.600' }}
-              focusBorderColor='blue.500'
-            >
-              <option value='en'>English</option>
-              <option value='es'>Spanish</option>
-              <option value='fr'>French</option>
-              <option value='de'>German</option>
-              <option value='zh-CN'>Chinese</option>
-              <option value='ja'>Japanese</option>
-            </Select> */}
 
             <Button onClick={handleSearchClick} colorScheme="blue" size="lg">
               Search

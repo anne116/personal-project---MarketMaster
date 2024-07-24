@@ -41,31 +41,42 @@ ChartJS.register(
 const Analysis = () => {
   const theme = useTheme();
   const location = useLocation();
-  const { keyword } = location.state || {};
+  const { keyword, crawlingInProgress } = location.state || {};
   const [suggestedTitle, setSuggestedTitle] = useState(null);
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
+  
 
   useEffect(() => {
-    if (keyword) {
+    if (keyword && !crawlingInProgress) {
       fetchStatistics();
       fetchSuggestedTitle();
     }
-  }, [keyword]);
+  }, [keyword, crawlingInProgress]);
 
   const fetchStatistics = async () => {
     try {
-      const response = await fetch(
-        `/api/fetch_statistics?keyword=${encodeURIComponent(keyword)}`,
-      );
-      if (!response.ok) throw new Error("Failed to fetch statistics");
+      const response = await fetch(`/api/fetch_statistics?keyword=${encodeURIComponent(keyword)}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          setError("No products found for the keyword.");
+          return;
+        }
+        throw new Error("Failed to fetch statistics");
+      }
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const responseText = await response.text();
+        throw new Error(`Unexpected response format: ${responseText}`);
+      }
       const data = await response.json();
+      console.log('check data', data)
       setStats(data);
     } catch (err) {
       setError(err.message);
     }
   };
-
+  
   const fetchSuggestedTitle = async () => {
     try {
       const titleResponse = await fetch(
@@ -382,12 +393,16 @@ const Analysis = () => {
         <Heading as="h1" size="xl" mb={6} textAlign="center" color="brand.800">
           Product Analysis for {keyword}
         </Heading>
-        {error && (
-          <Text color="red.500" mb={4}>
-            {error}
-          </Text>
-        )}
-        {stats ? (
+        {error ? (
+        <Text color="red.500" mb={4} textAlign="center">
+          {error}
+        </Text>
+        ) : crawlingInProgress ? (
+          <Box display="flex" justifyContent="center" mt={4}>
+            <Spinner size="xl" />
+            <Text ml={2}>The crawling job is proceeding. Please check back later.</Text>
+          </Box>
+        ) : stats ? (          
           <VStack spacing={4} align="stretch">
             <Grid templateColumns="repeat(2, 1fr)" gap={6}>
               <GridItem>

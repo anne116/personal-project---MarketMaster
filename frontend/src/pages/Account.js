@@ -181,7 +181,7 @@ const Account = () => {
                   value={signupName}
                   onChange={(e) => setSignupName(e.target.value)}
                   placeholder="Enter your username"
-                  autocomplete="username"  // Added this line
+                  autocomplete="username"
                 />
               </FormControl>
               <FormControl id="signupEmail" isRequired>
@@ -199,15 +199,14 @@ const Account = () => {
                   onChange={(e) => setSignupPassword(e.target.value)}
                   type="password"
                   placeholder="Enter your password"
-                  autocomplete="new-password"  // Added this line
+                  autocomplete="new-password"
                 />
               </FormControl>
               <Button
-                type="submit"  //add submit
+                type="submit"
                 colorScheme="brand"
                 color="white"
                 width="full"
-                // onClick={signup}
                 isDisabled={!isSignupFormValid()}
               >
                 Sign Up
@@ -227,7 +226,7 @@ const Account = () => {
                   value={signinEmail}
                   onChange={(e) => setSigninEmail(e.target.value)}
                   placeholder="Email"
-                  autocomplete="email"  // Added this line
+                  autocomplete="email"
                 />
               </FormControl>
               <FormControl id="signinPassword" isRequired>
@@ -237,14 +236,13 @@ const Account = () => {
                   onChange={(e) => setSigninPassword(e.target.value)}
                   type="password"
                   placeholder="Password"
-                  autocomplete="current-password"  // Added this line
+                  autocomplete="current-password"
                 />
               </FormControl>
               <Button
-                type="submit"  //add submit
+                type="submit"
                 colorScheme="blue"
                 width="full"
-                // onClick={signin}
                 isDisabled={!isSigninFormValid()}
               >
                 Sign In

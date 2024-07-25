@@ -46,6 +46,15 @@ const Header = () => {
       return socket;
     };
     const socket = connectWebSocket();
+
+    // Check for existing notifications in localStorage on initial load
+    const storedNotification = localStorage.getItem('latestNotification');
+    if (storedNotification) {
+      const parsedNotification = JSON.parse(storedNotification);
+      setNotifications((prev) => [...prev, parsedNotification]);
+      setNewNotifications((prev) => prev + 1);
+    }
+
     return () => {
       if (socket) {
         socket.close();

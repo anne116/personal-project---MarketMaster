@@ -54,7 +54,8 @@ const Account = () => {
     }
   }, [message, navigate]);
 
-  const signup = async () => {
+  const signup = async (event) => {
+    event.preventDefault();
     setError(null);
     setMessage(null);
     try {
@@ -91,7 +92,8 @@ const Account = () => {
     }
   };
 
-  const signin = async () => {
+  const signin = async (event) => {
+    event.preventDefault();
     setError(null);
     setMessage(null);
     try {
@@ -139,6 +141,15 @@ const Account = () => {
     return signinEmail.length > 0 && signinPassword.length > 0;
   };
 
+  const handleTabClick = (tab) => {
+    setActiveTab(tab);
+    if (tab === "signin") {
+      setSigninEmail("annchen@gmail.com");
+      setSigninPassword("annchen");
+    }
+  };
+  
+
   return (
     <Box
       p={5}
@@ -151,7 +162,7 @@ const Account = () => {
     >
       <HStack spacing={4} justify="center" mb={6}>
         <Button
-          onClick={() => setActiveTab("signup")}
+          onClick={() => handleTabClick("signup")}
           colorScheme="teal"
           color={activeTab === "signup" ? "white" : "brand.300"}
           variant={activeTab === "signup" ? "solid" : "outline"}
@@ -159,7 +170,7 @@ const Account = () => {
           Sign Up
         </Button>
         <Button
-          onClick={() => setActiveTab("signin")}
+          onClick={() => handleTabClick("signin")}
           colorScheme="teal"
           color={activeTab === "signin" ? "white" : "brand.300"}
           variant={activeTab === "signin" ? "solid" : "outline"}
@@ -168,79 +179,91 @@ const Account = () => {
         </Button>
       </HStack>
 
-      <VStack spacing={4}>
-        {activeTab === "signup" && (
-          <>
-            <FormControl id="signupName" isRequired>
-              <FormLabel>Username:</FormLabel>
-              <Input
-                value={signupName}
-                onChange={(e) => setSignupName(e.target.value)}
-                placeholder="Enter your username"
-              />
-            </FormControl>
-            <FormControl id="signupEmail" isRequired>
-              <FormLabel>Email:</FormLabel>
-              <Input
-                value={signupEmail}
-                onChange={(e) => setSignupEmail(e.target.value)}
-                placeholder="Enter your email"
-              />
-            </FormControl>
-            <FormControl id="signupPassword" isRequired>
-              <FormLabel>Password:</FormLabel>
-              <Input
-                value={signupPassword}
-                onChange={(e) => setSignupPassword(e.target.value)}
-                type="password"
-                placeholder="Enter your password"
-              />
-            </FormControl>
-            <Button
-              colorScheme="brand"
-              color="white"
-              width="full"
-              onClick={signup}
-              isDisabled={!isSignupFormValid()}
-            >
-              Sign Up
-            </Button>
-          </>
-        )}
 
-        {activeTab === "signin" && (
-          <>
-            <FormControl id="signinEmail" isRequired>
-              <FormLabel>Email:</FormLabel>
-              <Input
-                value={signinEmail}
-                onChange={(e) => setSigninEmail(e.target.value)}
-                placeholder="Email"
-              />
-            </FormControl>
-            <FormControl id="signinPassword" isRequired>
-              <FormLabel>Password:</FormLabel>
-              <Input
-                value={signinPassword}
-                onChange={(e) => setSigninPassword(e.target.value)}
-                type="password"
-                placeholder="Password"
-              />
-            </FormControl>
-            <Button
-              colorScheme="blue"
-              width="full"
-              onClick={signin}
-              isDisabled={!isSigninFormValid()}
-            >
-              Sign In
-            </Button>
-          </>
-        )}
+      {activeTab === "signup" && (
+        <>
+          <form onSubmit={signup}>
+            <VStack spacing={4}>
+              <FormControl id="signupName" isRequired>
+                <FormLabel>Username:</FormLabel>
+                <Input
+                  value={signupName}
+                  onChange={(e) => setSignupName(e.target.value)}
+                  placeholder="Enter your username"
+                  autocomplete="username"
+                />
+              </FormControl>
+              <FormControl id="signupEmail" isRequired>
+                <FormLabel>Email:</FormLabel>
+                <Input
+                  value={signupEmail}
+                  onChange={(e) => setSignupEmail(e.target.value)}
+                  placeholder="Enter your email"
+                />
+              </FormControl>
+              <FormControl id="signupPassword" isRequired>
+                <FormLabel>Password:</FormLabel>
+                <Input
+                  value={signupPassword}
+                  onChange={(e) => setSignupPassword(e.target.value)}
+                  type="password"
+                  placeholder="Enter your password"
+                  autocomplete="new-password"
+                />
+              </FormControl>
+              <Button
+                type="submit"
+                colorScheme="brand"
+                color="white"
+                width="full"
+                isDisabled={!isSignupFormValid()}
+              >
+                Sign Up
+              </Button>
+            </VStack>
+          </form>
+        </>
+      )}
+
+      {activeTab === "signin" && (
+        <>
+          <form onSubmit={signin}>
+            <VStack spacing={4}>
+              <FormControl id="signinEmail" isRequired>
+                <FormLabel>Email:</FormLabel>
+                <Input
+                  value={signinEmail}
+                  onChange={(e) => setSigninEmail(e.target.value)}
+                  placeholder="Email"
+                  autocomplete="email"
+                />
+              </FormControl>
+              <FormControl id="signinPassword" isRequired>
+                <FormLabel>Password:</FormLabel>
+                <Input
+                  value={signinPassword}
+                  onChange={(e) => setSigninPassword(e.target.value)}
+                  type="password"
+                  placeholder="Password"
+                  autocomplete="current-password"
+                />
+              </FormControl>
+              <Button
+                type="submit"
+                colorScheme="blue"
+                width="full"
+                isDisabled={!isSigninFormValid()}
+              >
+                Sign In
+              </Button>
+            </VStack>
+          </form>
+        </>
+      )}
 
         {message && <Text color="green.500">{message}</Text>}
         {error && <Text color="red.500">{error}</Text>}
-      </VStack>
+      
     </Box>
   );
 };

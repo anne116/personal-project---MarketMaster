@@ -579,8 +579,9 @@ async def fetch_statistics(keyword: str):
     conn.close()
 
     if not products:
-        raise HTTPException(
-            status_code=404, detail="No product found for current keyword"
+        return JSONResponse(
+            status_code=404, 
+            content={"error": "No product found for current keyword"}
         )
 
     price_list = [float(product[0]) for product in products]

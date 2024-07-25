@@ -141,6 +141,15 @@ const Account = () => {
     return signinEmail.length > 0 && signinPassword.length > 0;
   };
 
+  const handleTabClick = (tab) => {
+    setActiveTab(tab);
+    if (tab === "signin") {
+      setSigninEmail("annchen@gmail.com");
+      setSigninPassword("annchen");
+    }
+  };
+  
+
   return (
     <Box
       p={5}
@@ -153,7 +162,7 @@ const Account = () => {
     >
       <HStack spacing={4} justify="center" mb={6}>
         <Button
-          onClick={() => setActiveTab("signup")}
+          onClick={() => handleTabClick("signup")}
           colorScheme="teal"
           color={activeTab === "signup" ? "white" : "brand.300"}
           variant={activeTab === "signup" ? "solid" : "outline"}
@@ -161,7 +170,7 @@ const Account = () => {
           Sign Up
         </Button>
         <Button
-          onClick={() => setActiveTab("signin")}
+          onClick={() => handleTabClick("signin")}
           colorScheme="teal"
           color={activeTab === "signin" ? "white" : "brand.300"}
           variant={activeTab === "signin" ? "solid" : "outline"}

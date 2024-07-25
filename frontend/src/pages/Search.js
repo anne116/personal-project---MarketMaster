@@ -67,6 +67,7 @@ const Search = () => {
       const data = JSON.parse(event.data);
       setNotification(data.message);
       setShowAlert(true);
+      localStorage.setItem('latestNotification', JSON.stringify(data));
     };
     socket.onclose = () => {
       setTimeout(() => {

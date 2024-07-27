@@ -7,7 +7,7 @@ import time
 import random
 import logging
 import os
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 from mysql.connector import Error
 from dotenv import load_dotenv
 from backend.utils.utils import store_data, update_progress, get_progress
@@ -64,8 +64,12 @@ async def extract_product_images(context, product_page_url):
         ]
         await product_page.close()
         return main_image_url, list(set(other_image_urls))
-    except TimeoutError:
-        print("Timeout waiting for the main image on %s", product_page_url)
+    except PlaywrightTimeoutError:
+        logger.error(f"Timeout waiting for the main image on {product_page_url}")
+        await product_page.close()
+        return None, []
+    except Exception as e:
+        logger.error(f"Unexpected error on {product_page_url}: {e}")
         await product_page.close()
         return None, []
 
@@ -174,8 +178,7 @@ async def crawl_page(page, context, keyword: str, batch_size=2):
         store_data(products)
     return items_crawled
 
-
-async def fetch_product_info(keyword: str, batch_size=2, min_items_to_store=80):
+async def fetch_product_info(keyword: str, batch_size=2, min_items_to_store=80, max_retries=3):
     """Fetch product information for a given keyword"""
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(headless=False, slow_mo=1000)
@@ -184,16 +187,30 @@ async def fetch_product_info(keyword: str, batch_size=2, min_items_to_store=80):
         base_url = f"https://www.amazon.com/s?k={keyword}"
         current_page = get_progress(keyword)
         total_items_crawled = 0
+        retries = 0
 
         try:
             while True:
                 url = f"{base_url}&page={current_page}"
-                logger.debug("Navigating to URL: %s", url)
-                await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                logger.debug(f"Navigating to URL: {url}")
+                try:
+                    await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                except PlaywrightTimeoutError:
+                    logger.error(f"Timeout navigating to URL: {url}")
+                    retries += 1
+                    if retries >= max_retries:
+                        logger.error("Max retries reached, exiting...")
+                        break
+                    continue
+
                 await page.wait_for_timeout(random.randint(3000, 10000))
                 items_crawled = await crawl_page(page, context, keyword, batch_size)
                 total_items_crawled += items_crawled
                 update_progress(keyword, current_page)
+
+                if total_items_crawled >= min_items_to_store:
+                    logger.info(f"Crawled {total_items_crawled} items, exceeding the threshold.")
+                    break
 
                 try:
                     next_button = await page.query_selector("a.s-pagination-next")
@@ -204,22 +221,18 @@ async def fetch_product_info(keyword: str, batch_size=2, min_items_to_store=80):
                         current_page += 1
                     else:
                         break
-                except (TimeoutError, Error) as err:
-                    logger.error("Error navigating to next page: %s", err)
+                except (PlaywrightTimeoutError, Error) as err:
+                    logger.error(f"Error navigating to next page: {err}")
                     break
         except Exception as err:
-            logger.error("Error during crawling: %s", err)
+            logger.error(f"Error during crawling: {err}")
             if total_items_crawled >= min_items_to_store:
-                logger.info(
-                    "Crawling interrupted, Crawled items (%s) exceed threshold.",
-                    total_items_crawled,
-                )
+                logger.info(f"Crawling interrupted, Crawled items ({total_items_crawled}) exceed threshold.")
                 return total_items_crawled
             raise err
         finally:
             await browser.close()
         return total_items_crawled
-
 
 async def main():
     """Main function to run the keyword crawl"""
